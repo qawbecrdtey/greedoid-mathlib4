@@ -1,11 +1,25 @@
 import Mathlib.Data.List.Basic
+import Mathlib.Data.List.TFAE
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.List
+import Mathlib.Tactic.TFAE
 
 /-  Note: We distinguish `w` as a `Word` from `l` as a `List`, but use the same type
     as there are so many functionalities given with `List`. -/
+
+/-- The exchange axiom for set systems -/
+def exchange_axiom {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Finset α)) :=
+  {s₁ : Finset α} → (hs₁ : s₁ ∈ Sys) →
+  {s₂ : Finset α} → (hs₂ : s₂ ∈ Sys) →
+  (hs : s₁.card > s₂.card) →
+    ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys
+
+/-- Accessible sets are defined as an associated set system of hereditary language;
+    here we only pick its properties. -/
+def accessible {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Finset α)) :=
+  ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x : α, s \ {x} ∈ Sys)
 
 /-- Language version of greedoid. -/
 structure GreedoidLanguage (α : Type _) [Fintype α] where
@@ -28,8 +42,7 @@ structure GreedoidSystem (α : Type _) [Fintype α] [DecidableEq α] where
   /-- `feasible_set` contains an empty set. -/
   contains_empty : ∅ ∈ feasible_set
   /-- Exchange Axiom -/
-  exchange_axiom : {s₁ : Finset α} → s₁ ∈ feasible_set → {s₂ : Finset α} → s₂ ∈ feasible_set →
-    s₁.card > s₂.card → ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ feasible_set
+  exchange_axiom : exchange_axiom feasible_set
 
 /-- Checks if the converted set equals the feasible set.
 
@@ -94,11 +107,14 @@ protected def Greedoid.listMem {α : Type _} [Fintype α] [DecidableEq α]
   (w : List α) (G : Greedoid α) := w ∈ G.language.language
 
 @[inherit_doc] infix:50 " ∈ₛ " => Greedoid.finsetMem
+infix:50 " ∉ₛ " => fun s G => ¬ (Greedoid.finsetMem s G)
 @[inherit_doc] infix:50 " ∈ₗ " => Greedoid.listMem
 instance {α : Type _} [Fintype α] [DecidableEq α] :
   Membership (Finset α) (Greedoid α) := ⟨Greedoid.finsetMem⟩
 
 namespace Greedoid
+
+open List Finset Multiset
 
 variable {α : Type _} [Fintype α] [DecidableEq α]
 
@@ -128,5 +144,43 @@ theorem finset_feasible_exists_feasible_ssubset {G : Greedoid α} {s : Finset α
   sorry
 
 end Membership
+
+theorem greedoid_system_accessible {G : Greedoid α} : accessible G.system.feasible_set := by
+  simp [accessible, G.system.contains_empty]
+  intro s hs₁ hs₂
+  sorry
+
+/-- A weak version of exchange axiom of set system version of greedoid -/
+def weak_exchange_axiom (Sys : Finset (Finset α)) :=
+  {s₁ : Finset α} → (hs₁ : s₁ ∈ Sys) →
+  {s₂ : Finset α} → (hs₂ : s₂ ∈ Sys) →
+  (hs : s₁.card = s₂.card + 1) →
+    ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys
+
+/-- A weaker version of exchange axiom of set system version of greedoid -/
+def weaker_exchange_axiom (Sys : Finset (Finset α)) :=
+  {s : Finset α} →
+  {x : α} → (hx₁ : x ∉ s) → (hx₂ : s ∪ {x} ∈ Sys) →
+  {y : α} → (hy₁ : y ∉ s) → (hy₂ : s ∪ {y} ∈ Sys) →
+  {z : α} → (hz : z ∉ s) →
+  (hxz : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
+    s ∪ {y, z} ∈ Sys
+
+theorem exchange_axioms_tfae {Sys : Finset (Finset α)} (hSys : accessible Sys) :
+    TFAE [exchange_axiom Sys, weak_exchange_axiom Sys, weaker_exchange_axiom Sys] := by
+  sorry
+
+theorem greedoid_weak_exchange_axiom {G : Greedoid α} :
+  weak_exchange_axiom G.system.feasible_set := fun {_} hs₁ {_} hs₂ hs =>
+    let ⟨x, hx⟩ := G.system.exchange_axiom hs₁ hs₂ (by simp [hs])
+    ⟨x, hx⟩
+
+theorem greedoid_weaker_exchange_axiom {G : Greedoid α} {s : Finset α}
+  {x : α} (hx₁ : x ∉ s) (hx₂ : s ∪ {x} ∈ₛ G)
+  {y : α} (hy₁ : y ∉ s) (hy₂ : s ∪ {y} ∈ₛ G)
+  {z : α} (hz : z ∉ s)
+  (hxz : s ∪ {x, z} ∈ₛ G) (hxy : s ∪ {x, y} ∉ₛ G) :
+    s ∪ {y, z} ∈ₛ G := by
+  sorry
 
 end Greedoid
