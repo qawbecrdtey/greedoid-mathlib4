@@ -72,16 +72,63 @@ protected def Greedoid.fromSystemToLanguage {α : Type _} [Fintype α] [Decidabl
     2. `language = {w | underlying set of every prefix of w is feasible}` -/
 protected def Greedoid.relatedLanguageSystem {α : Type _} [Fintype α] [DecidableEq α]
   (L : GreedoidLanguage α) (S : GreedoidSystem α) : Prop :=
-  S.feasible_set = Greedoid.fromLanguageToSystem L ∧
-  L.language = Greedoid.fromSystemToLanguage S
+  S.feasible_set = Greedoid.fromLanguageToSystem L ∧ L.language = Greedoid.fromSystemToLanguage S
 
 /-- Merging of language and system version of greedoid.
     This will (potentially) help `Greedoid` cover theorems written in
     both language and systems. -/
 structure Greedoid (α : Type _) [Fintype α] [DecidableEq α] where
   /-- Greedoid as a language. -/
-  greedoid_language : GreedoidLanguage α
+  language : GreedoidLanguage α
   /-- Greedoid as a system. -/
-  greedoid_system : GreedoidSystem α
-  /-- `greedoid_language` and `greedoid_system` are related. -/
-  related : Greedoid.relatedLanguageSystem greedoid_language greedoid_system
+  system : GreedoidSystem α
+  /-- `language` and `system` are related. -/
+  related : Greedoid.relatedLanguageSystem language system
+
+/-- Definition of `Finset` in `Greedoid` -/
+protected def Greedoid.finsetMem {α : Type _} [Fintype α] [DecidableEq α]
+  (s : Finset α) (G : Greedoid α) := s ∈ G.system.feasible_set
+
+/-- Definition of `List` (or equivalently, `Word`) in `Greedoid` -/
+protected def Greedoid.listMem {α : Type _} [Fintype α] [DecidableEq α]
+  (w : List α) (G : Greedoid α) := w ∈ G.language.language
+
+@[inherit_doc] infix:50 " ∈ₛ " => Greedoid.finsetMem
+@[inherit_doc] infix:50 " ∈ₗ " => Greedoid.listMem
+instance {α : Type _} [Fintype α] [DecidableEq α] :
+  Membership (Finset α) (Greedoid α) := ⟨Greedoid.finsetMem⟩
+
+namespace Greedoid
+
+variable {α : Type _} [Fintype α] [DecidableEq α]
+
+section Membership
+
+theorem emptyset_finsetMem {G : Greedoid α} : (∅ : Finset α) ∈ₛ G := G.system.contains_empty
+
+theorem nil_listMem {G : Greedoid α} : ([] : List α) ∈ₗ G := G.language.contains_empty
+
+theorem emptyset_mem {G : Greedoid α} : (∅ : Finset α) ∈ G := G.system.contains_empty
+
+theorem nil_toFinset_mem {G : Greedoid α} : [].toFinset ∈ G := G.system.contains_empty
+
+theorem finsetMem_mem_iff {G : Greedoid α} {s : Finset α} :
+    s ∈ₛ G ↔ s ∈ G := by rfl
+
+theorem word_mem_language_toFinset_mem {G : Greedoid α} {w : List α} (hw : w ∈ₗ G) :
+    w.toFinset ∈ G := by
+  sorry
+
+theorem finset_feasible_exists_word {G : Greedoid α} {s : Finset α} (hs : s ∈ₛ G) :
+    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := by
+  sorry
+
+theorem finset_feasible_exists_feasible_ssubset {G : Greedoid α} {s : Finset α} (hs : s ≠ ∅) :
+    ∃ s', s' ⊂ s ∧ s ∈ₛ G := by
+  sorry
+
+end Membership
+
+end Greedoid
+
+#lint
