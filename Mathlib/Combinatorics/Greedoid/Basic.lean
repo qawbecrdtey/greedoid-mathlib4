@@ -166,21 +166,33 @@ def weaker_exchange_axiom (Sys : Finset (Finset α)) :=
   (hxz : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
     s ∪ {y, z} ∈ Sys
 
-theorem exchange_axioms_tfae {Sys : Finset (Finset α)} (hSys : accessible Sys) :
+theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) :
     TFAE [exchange_axiom Sys, weak_exchange_axiom Sys, weaker_exchange_axiom Sys] := by
-  sorry
+  tfae_have 1 → 2
+  {
+    intro h _ hs₁ _ hs₂ hs
+    let ⟨x, hx⟩ := h hs₁ hs₂ (by simp [hs])
+    exact ⟨x, hx⟩
+  }
+  tfae_have 2 → 3
+  {
+    intro h s x hx₁ hx₂ y hy₁ hy₂ z hz hxz hxy
+    admit
+  }
+  tfae_have 3 → 1
+  {
+    intro h s₁ hs₁ s₂ hs₂ hs
+    admit
+  }
+  tfae_finish
 
-theorem greedoid_weak_exchange_axiom {G : Greedoid α} :
+theorem greedoid_weak_exchange_axiom' {G : Greedoid α} :
   weak_exchange_axiom G.system.feasible_set := fun {_} hs₁ {_} hs₂ hs =>
     let ⟨x, hx⟩ := G.system.exchange_axiom hs₁ hs₂ (by simp [hs])
     ⟨x, hx⟩
 
-theorem greedoid_weaker_exchange_axiom {G : Greedoid α} {s : Finset α}
-  {x : α} (hx₁ : x ∉ s) (hx₂ : s ∪ {x} ∈ₛ G)
-  {y : α} (hy₁ : y ∉ s) (hy₂ : s ∪ {y} ∈ₛ G)
-  {z : α} (hz : z ∉ s)
-  (hxz : s ∪ {x, z} ∈ₛ G) (hxy : s ∪ {x, y} ∉ₛ G) :
-    s ∪ {y, z} ∈ₛ G := by
+theorem greedoid_weaker_exchange_axiom' {G : Greedoid α} :
+    weaker_exchange_axiom G.system.feasible_set :=
   sorry
 
 end Greedoid
