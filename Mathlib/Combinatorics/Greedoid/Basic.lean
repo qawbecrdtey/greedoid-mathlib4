@@ -130,5 +130,3 @@ theorem finset_feasible_exists_feasible_ssubset {G : Greedoid α} {s : Finset α
 end Membership
 
 end Greedoid
-
-#lint
