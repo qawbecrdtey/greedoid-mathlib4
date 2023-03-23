@@ -23,7 +23,7 @@ def accessible {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Finset
 
 section ExchangeAxioms
 
-open List
+open List Finset
 
 variable {α : Type _} [Fintype α] [DecidableEq α]
 
@@ -54,13 +54,31 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) 
   tfae_have 2 → 3
   {
     intro h s x hx₁ hx₂ y hy₁ hy₂ z hz hxz hxy
-    admit
+    let ⟨z', hz₁', hz₂'⟩ := h hxz hy₂ (by admit)
+    simp at hz₁'
+    let ⟨h₁, h₂⟩ := hz₁'
+    apply h₁.elim <;> intro h₁ <;> try (apply h₁.elim <;> intro h₁)
+    . simp [h₁] at hz₂'
+      exfalso
+      apply hxy
+      have : s ∪ {x, y} = s ∪ ({y} ∪ {x}) := by
+        simp
+        rw [union_comm _ ({y} ∪ {x}), union_comm {y} {x}, union_assoc, union_comm {y} s]
+        rfl
+      rw [this]
+      exact hz₂'
+    . exfalso
+      exact h₂ (Or.inl h₁)
+    . simp [h₁] at h₂ hz₂'
+      have : s ∪ {y, z} = s ∪ ({y} ∪ {z}) := by
+        simp
+        rw [union_comm _ ({y} ∪ {z}), union_assoc, union_comm {z} s]
+        rfl
+      rw [this]
+      exact hz₂'
   }
   tfae_have 3 → 1
-  {
-    intro h s₁ hs₁ s₂ hs₂ hs
-    admit
-  }
+  { admit }
   tfae_finish
 
 end ExchangeAxioms
