@@ -21,6 +21,50 @@ def exchange_axiom {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Fi
 def accessible {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Finset α)) :=
   ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x : α, s \ {x} ∈ Sys)
 
+section ExchangeAxioms
+
+open List
+
+variable {α : Type _} [Fintype α] [DecidableEq α]
+
+/-- A weak version of exchange axiom of set system version of greedoid -/
+def weak_exchange_axiom (Sys : Finset (Finset α)) :=
+  {s₁ : Finset α} → (hs₁ : s₁ ∈ Sys) →
+  {s₂ : Finset α} → (hs₂ : s₂ ∈ Sys) →
+  (hs : s₁.card = s₂.card + 1) →
+    ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys
+
+/-- A weaker version of exchange axiom of set system version of greedoid -/
+def weaker_exchange_axiom (Sys : Finset (Finset α)) :=
+  {s : Finset α} →
+  {x : α} → (hx₁ : x ∉ s) → (hx₂ : s ∪ {x} ∈ Sys) →
+  {y : α} → (hy₁ : y ∉ s) → (hy₂ : s ∪ {y} ∈ Sys) →
+  {z : α} → (hz : z ∉ s) →
+  (hxz : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
+    s ∪ {y, z} ∈ Sys
+
+theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) :
+    TFAE [exchange_axiom Sys, weak_exchange_axiom Sys, weaker_exchange_axiom Sys] := by
+  tfae_have 1 → 2
+  {
+    intro h _ hs₁ _ hs₂ hs
+    let ⟨x, hx⟩ := h hs₁ hs₂ (by simp [hs])
+    exact ⟨x, hx⟩
+  }
+  tfae_have 2 → 3
+  {
+    intro h s x hx₁ hx₂ y hy₁ hy₂ z hz hxz hxy
+    admit
+  }
+  tfae_have 3 → 1
+  {
+    intro h s₁ hs₁ s₂ hs₂ hs
+    admit
+  }
+  tfae_finish
+
+end ExchangeAxioms
+
 /-- Language version of greedoid. -/
 structure GreedoidLanguage (α : Type _) [Fintype α] where
   /-- `language` is a finite sequence of words. -/
@@ -118,6 +162,11 @@ open List Finset Multiset
 
 variable {α : Type _} [Fintype α] [DecidableEq α]
 
+theorem greedoid_system_accessible {G : Greedoid α} : accessible G.system.feasible_set := by
+  simp [accessible, G.system.contains_empty]
+  intro s hs₁ hs₂
+  sorry
+
 section Membership
 
 theorem emptyset_finsetMem {G : Greedoid α} : (∅ : Finset α) ∈ₛ G := G.system.contains_empty
@@ -144,47 +193,6 @@ theorem finset_feasible_exists_feasible_ssubset {G : Greedoid α} {s : Finset α
   sorry
 
 end Membership
-
-theorem greedoid_system_accessible {G : Greedoid α} : accessible G.system.feasible_set := by
-  simp [accessible, G.system.contains_empty]
-  intro s hs₁ hs₂
-  sorry
-
-/-- A weak version of exchange axiom of set system version of greedoid -/
-def weak_exchange_axiom (Sys : Finset (Finset α)) :=
-  {s₁ : Finset α} → (hs₁ : s₁ ∈ Sys) →
-  {s₂ : Finset α} → (hs₂ : s₂ ∈ Sys) →
-  (hs : s₁.card = s₂.card + 1) →
-    ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys
-
-/-- A weaker version of exchange axiom of set system version of greedoid -/
-def weaker_exchange_axiom (Sys : Finset (Finset α)) :=
-  {s : Finset α} →
-  {x : α} → (hx₁ : x ∉ s) → (hx₂ : s ∪ {x} ∈ Sys) →
-  {y : α} → (hy₁ : y ∉ s) → (hy₂ : s ∪ {y} ∈ Sys) →
-  {z : α} → (hz : z ∉ s) →
-  (hxz : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
-    s ∪ {y, z} ∈ Sys
-
-theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) :
-    TFAE [exchange_axiom Sys, weak_exchange_axiom Sys, weaker_exchange_axiom Sys] := by
-  tfae_have 1 → 2
-  {
-    intro h _ hs₁ _ hs₂ hs
-    let ⟨x, hx⟩ := h hs₁ hs₂ (by simp [hs])
-    exact ⟨x, hx⟩
-  }
-  tfae_have 2 → 3
-  {
-    intro h s x hx₁ hx₂ y hy₁ hy₂ z hz hxz hxy
-    admit
-  }
-  tfae_have 3 → 1
-  {
-    intro h s₁ hs₁ s₂ hs₂ hs
-    admit
-  }
-  tfae_finish
 
 theorem greedoid_weak_exchange_axiom' {G : Greedoid α} :
   weak_exchange_axiom G.system.feasible_set := fun {_} hs₁ {_} hs₂ hs =>
