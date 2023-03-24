@@ -260,16 +260,13 @@ theorem finsetMem_mem_iff {G : Greedoid α} {s : Finset α} :
     s ∈ₛ G ↔ s ∈ G := by rfl
 
 theorem word_mem_language_toFinset_mem {G : Greedoid α} {w : List α} (hw : w ∈ₗ G) :
-    w.toFinset ∈ G := by
-  sorry
+    w.toFinset ∈ G := sorry
 
 theorem finset_feasible_exists_word {G : Greedoid α} {s : Finset α} (hs : s ∈ₛ G) :
-    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := by
-  sorry
+    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := sorry
 
 theorem finset_feasible_exists_feasible_ssubset {G : Greedoid α} {s : Finset α} (hs : s ≠ ∅) :
-    ∃ s', s' ⊂ s ∧ s ∈ₛ G := by
-  sorry
+    ∃ s', s' ⊂ s ∧ s ∈ₛ G := sorry
 
 end Membership
 
@@ -293,5 +290,156 @@ def interval_property (G : Greedoid α) :=
   {C : Finset α} → C ∈ₛ G →
   A ⊆ B → B ⊆ C → {x : α} → x ∉ C →
   A ∪ {x} ∈ₛ G → C ∪ {x} ∈ₛ G → B ∪ {x} ∈ₛ G
+
+/-- Matroid is an interval greedoid without lower bound. -/
+def interval_property_wo_lower_bound (G : Greedoid α) :=
+  {A : Finset α} → A ∈ₛ G →
+  {B : Finset α} → B ∈ₛ G → A ⊆ B →
+  {x : α} → x ∉ B →
+  B ∪ {x} ∈ₛ G → A ∪ {x} ∈ₛ G
+
+theorem interval_property_wo_lower_bound_then_interval_property {G : Greedoid α}
+    (hG : interval_property_wo_lower_bound G) : interval_property G := by
+  intro _ _ _ hB _ hC _ h₂ _ hx _ hCx
+  exact hG hB hC h₂ hx hCx
+
+/-- Antimatroid is an interval greedoid without upper bound. -/
+def interval_property_wo_upper_bound (G : Greedoid α) :=
+  {A : Finset α} → A ∈ₛ G →
+  {B : Finset α} → B ∈ₛ G → B ⊆ A →
+  {x : α} → x ∉ A →
+  B ∪ {x} ∈ₛ G → A ∪ {x} ∈ₛ G
+
+theorem interval_property_wo_upper_bound_then_interval_property {G : Greedoid α}
+    (hG : interval_property_wo_upper_bound G) : interval_property G := by
+  intro _ hA _ hB _ _ h₁ h₂ _ hx hAx _
+  exact hG hB hA h₁ (fun h => hx (h₂ h)) hAx
+
+-- TODO: Move to Rank.lean
+
+/-- A cardinality of largest feasible subset of `s` in `G`. -/
+def rank (G : Greedoid α) (s : Finset α) :=
+  ((G.system.feasible_set.filter (fun s' => s' ⊆ s)).image (fun t => t.card)).max.unbot (by
+    intro h
+    simp [Finset.max_eq_bot, filter_eq_empty_iff] at h
+    exact h _ G.system.contains_empty (by simp only [empty_subset]))
+
+section rank
+
+variable {G : Greedoid α} {s t : Finset α} {x y : α}
+
+theorem rank_eq_bases_card :
+    ∀ b ∈ SetSystem.bases (G.system.feasible_set) s, b.card = G.rank s := by
+  by_contra'
+  let ⟨b, hb₁, hb₂⟩ := this; clear this
+  rw [← lt_or_lt_iff_ne] at hb₂
+  apply hb₂.elim <;> intro h <;> clear hb₂ <;> clear hb₂
+  . sorry
+  . sorry
+
+theorem rank_empty : G.rank ∅ = 0 := by
+  simp [rank, Finset.subset_empty, Finset.filter_eq', G.system.contains_empty]
+
+theorem rank_le_card : G.rank s ≤ s.card := sorry
+
+theorem subset_then_rank_le (hs : s ⊆ t) : s.card ≤ t.card := sorry
+
+theorem local_submodularity
+  (h₁ : G.rank s = G.rank (s ∪ {x}))
+  (h₂ : G.rank s = G.rank (s ∪ {y})) :
+    G.rank s = G.rank (s ∪ {x, y}) := by
+  sorry
+
+theorem stronger_local_submodularity
+  (h₁ : G.rank s = G.rank (s ∩ t))
+  (h₂ : G.rank t = G.rank (s ∩ t)) :
+    G.rank s = G.rank (s ∪ t) := by
+  sorry
+
+theorem rank_lt_succ_lt
+  (hs₁ : G.rank s < G.rank (s ∪ {x}))
+  (hs₂ : G.rank s < G.rank (s ∪ {y})) :
+    G.rank s + 1 < G.rank (s ∪ {x, y}) := by
+  sorry
+
+theorem rank_of_feasible (hs : s ∈ₛ G) : G.rank s = s.card := sorry
+
+theorem rank_of_infeasible (hs : s ∉ₛ G) : G.rank s < s.card := sorry
+
+theorem rank_eq_card_iff_feasible : G.rank s = s.card ↔ s ∈ₛ G := by
+  constructor <;> intro h
+  . sorry
+  . exact rank_of_feasible h
+
+end rank
+
+-- TODO: Move to Closure.lean
+
+/-- Closure of `s` is the largest set which contains `s` and have the same rank with `s`. -/
+def closure (G : Greedoid α) (s : Finset α) : Finset α:=
+  (@Finset.univ α _).filter (fun x => G.rank (s ∪ {x}) = G.rank s)
+
+section closure
+
+variable {G : Greedoid α} {s t : Finset α} {x y : α}
+
+theorem self_subset_closure : s ⊆ G.closure s := by
+  simp [closure]
+  intro x hx
+  have hx : {x} ⊆ s := by simp only [singleton_subset_iff, hx]
+  simp [Finset.union_eq_left_iff_subset.mpr hx]
+
+theorem rank_closure_eq_rank_self : G.rank (G.closure s) = G.rank s := sorry
+
+theorem feasible_iff_elem_notin_closure_minus_elem :
+    s ∈ₛ G ↔ ∀ x ∈ s, x ∉ G.closure (s \ {x}) := by
+  simp [closure]
+  constructor <;> intro h
+  . intro x hx h'
+    have hx : {x} ⊆ s := by simp only [singleton_subset_iff, hx]
+    simp [Finset.union_eq_left_iff_subset.mpr hx] at h'
+    rw [rank_of_feasible h] at h'
+    sorry
+  . sorry
+
+theorem closure_eq_of_subset_adj_closure (hst : s ⊆ G.closure t) (hts : t ⊆ G.closure s) :
+    G.closure s = G.closure t := sorry
+
+theorem closure_idempotent : G.closure (G.closure s) = G.closure s :=
+  closure_eq_of_subset_adj_closure (by simp)
+    (Finset.Subset.trans self_subset_closure self_subset_closure)
+
+theorem closure_exchange_property
+  (hx : x ∉ s) (hy : y ∉ s) (hs : s ∪ {x} ∈ₛ G)
+  (hx : x ∈ G.closure (s ∪ {y})) :
+    y ∈ G.closure (s ∪ {x}) := sorry
+
+/-- `cospanning` is an equivalence relation in `2^E`. -/
+def cospanning (G : Greedoid α) (s t : Finset α) := G.closure s = G.closure t
+
+section cospanning
+
+protected theorem cospanning.refl : ∀ s, G.cospanning s s := by simp [cospanning]
+
+protected theorem cospanning.symm (h : G.cospanning s t) : G.cospanning t s := by
+  simp only [cospanning] at h; simp only [cospanning, h]
+
+protected theorem cospanning.comm : G.cospanning s t ↔ G.cospanning t s :=
+  ⟨cospanning.symm, cospanning.symm⟩
+
+protected theorem cospanning.trans {s t u : Finset α}
+  (hst : G.cospanning s t) (htu : G.cospanning t u) :
+    G.cospanning s u := by
+  simp only [cospanning] at hst htu; simp only [cospanning, hst, htu]
+
+theorem cospanning.eqv : Equivalence (G.cospanning) :=
+  ⟨cospanning.refl, cospanning.symm, cospanning.trans⟩
+
+instance isSetoid (G : Greedoid α) : Setoid (Finset α) :=
+  Setoid.mk G.cospanning cospanning.eqv
+
+end cospanning
+
+end closure
 
 end Greedoid
