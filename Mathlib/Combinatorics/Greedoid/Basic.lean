@@ -10,7 +10,7 @@ import Mathlib.Tactic.TFAE
     as there are so many functionalities given with `List`. -/
 
 /-- The exchange axiom for set systems -/
-def exchange_axiom {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Finset α)) :=
+def exchange_axiom {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
   {s₁ : Finset α} → (hs₁ : s₁ ∈ Sys) →
   {s₂ : Finset α} → (hs₂ : s₂ ∈ Sys) →
   (hs : s₁.card > s₂.card) →
@@ -18,8 +18,34 @@ def exchange_axiom {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Fi
 
 /-- Accessible sets are defined as an associated set system of hereditary language;
     here we only pick its properties. -/
-def accessible {α : Type _} [Fintype α] [DecidableEq α] (Sys : Finset (Finset α)) :=
+def accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
   ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x : α, s \ {x} ∈ Sys)
+
+protected theorem Finset.card_induction_on {α : Type _} {p : Finset α → Prop} [DecidableEq α]
+  (s : Finset α) (empty : p ∅)
+    (insert : ∀ {s : Finset α},
+      (∃ t : Finset α, t.card + 1 = s.card ∧ t ⊆ s ∧ p t) → p s) : p s := by
+  induction' s using Finset.induction_on with a s ha ih
+  . exact empty
+  . exact insert ⟨s, by simp [ha], fun x hx => by simp; exact Or.inr hx, ih⟩
+
+namespace SetSystem
+
+variable {α : Type _} [Fintype α] [DecidableEq α]
+
+/-- Base of a set system is the collection of feasible sets which is maximal. -/
+def base (Sys : Finset (Finset α)) : Finset (Finset α) :=
+  Sys.filter (fun s => ∀ a, a ∉ s → s ∪ {a} ∉ Sys)
+
+/-- Bases of a set `a` given a set system is
+    the collection of feasible sets which is maximal in `a`. -/
+def bases (Sys : Finset (Finset α)) (s : Finset α) : Finset (Finset α) :=
+  Sys.filter (fun s' => s' ⊆ s ∧ (∀ a, a ∉ s' → a ∉ s ∨ s' ∪ {a} ∉ Sys))
+
+theorem base_bases_eq {Sys : Finset (Finset α)} :
+    base Sys = bases Sys (@Finset.univ α _) := by ext s; simp [bases, base]
+
+end SetSystem
 
 section ExchangeAxioms
 
@@ -51,6 +77,8 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) 
     let ⟨x, hx⟩ := h hs₁ hs₂ (by simp [hs])
     exact ⟨x, hx⟩
   }
+  tfae_have 2 → 1
+  { sorry }
   tfae_have 2 → 3
   {
     intro h s x hx₁ hx₂ y hy₁ hy₂ z hz hxz hxy
@@ -77,9 +105,37 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) 
       rw [this]
       exact hz₂'
   }
-  tfae_have 3 → 1
-  { admit }
+  tfae_have 3 → 2
+  { sorry }
   tfae_finish
+
+theorem exchange_property_bases_card_iff {Sys : Finset (Finset α)} :
+    exchange_axiom Sys ↔ (∀ a : Finset α,
+      ∀ b₁ ∈ SetSystem.bases Sys a, ∀ b₂ ∈ SetSystem.bases Sys a,
+      b₁.card = b₂.card) := by
+  simp [exchange_axiom, SetSystem.bases]
+  constructor <;> intro h
+  . intro a b₁ hb₁₁ hb₁₂ hb₁₃ b₂ hb₂₁ hb₂₂ hb₂₃
+    by_contra' h'
+    by_cases h'' : (b₁.card < b₂.card)
+    . let ⟨x, ⟨hx₁, hx₂⟩, hx₃⟩ := h hb₂₁ hb₁₁ h''
+      apply (hb₁₃ x hx₂).elim <;> intro h'''
+      . exact h''' (hb₂₂ hx₁)
+      . exact h''' hx₃
+    . have h'' : b₂.card < b₁.card := by
+        apply (Nat.eq_or_lt_of_not_lt h'').elim <;> intro <;> try trivial
+      let ⟨x, ⟨hx₁, hx₂⟩, hx₃⟩ := h hb₁₁ hb₂₁ h''
+      apply (hb₂₃ x hx₂).elim <;> intro h'''
+      . exact h''' (hb₁₂ hx₁)
+      . exact h''' hx₃
+  . intro s₁ hs₁ s₂ hs₂ hs
+    by_contra' h'
+    have := h (s₁ ∪ s₂) s₂ hs₂ (fun x hx => by simp [hx]) (fun a ha => by
+      by_cases (a ∈ s₁ ∪ s₂)
+      . simp [ha] at h
+        exact Or.inr (h' _ ⟨h, ha⟩)
+      . exact Or.inl h)
+    sorry
 
 end ExchangeAxioms
 
@@ -169,8 +225,11 @@ protected def Greedoid.listMem {α : Type _} [Fintype α] [DecidableEq α]
   (w : List α) (G : Greedoid α) := w ∈ G.language.language
 
 @[inherit_doc] infix:50 " ∈ₛ " => Greedoid.finsetMem
+/-- Negated version of `∉ₛ` -/
 infix:50 " ∉ₛ " => fun s G => ¬ (Greedoid.finsetMem s G)
 @[inherit_doc] infix:50 " ∈ₗ " => Greedoid.listMem
+/-- Negated version of `∉ₗ` -/
+infix:50 " ∉ₗ " => fun w G => ¬ (Greedoid.listMem w G)
 instance {α : Type _} [Fintype α] [DecidableEq α] :
   Membership (Finset α) (Greedoid α) := ⟨Greedoid.finsetMem⟩
 
@@ -183,7 +242,9 @@ variable {α : Type _} [Fintype α] [DecidableEq α]
 theorem greedoid_system_accessible {G : Greedoid α} : accessible G.system.feasible_set := by
   simp [accessible, G.system.contains_empty]
   intro s hs₁ hs₂
-  sorry
+  induction' s using Finset.induction_on with a s ha ih
+  . simp at hs₂
+  . sorry
 
 section Membership
 
@@ -212,13 +273,25 @@ theorem finset_feasible_exists_feasible_ssubset {G : Greedoid α} {s : Finset α
 
 end Membership
 
-theorem greedoid_weak_exchange_axiom' {G : Greedoid α} :
-  weak_exchange_axiom G.system.feasible_set := fun {_} hs₁ {_} hs₂ hs =>
-    let ⟨x, hx⟩ := G.system.exchange_axiom hs₁ hs₂ (by simp [hs])
-    ⟨x, hx⟩
+theorem weak_exchange_axiom' {G : Greedoid α} :
+    weak_exchange_axiom G.system.feasible_set := by
+  apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 1).mp
+  exact G.system.exchange_axiom
 
-theorem greedoid_weaker_exchange_axiom' {G : Greedoid α} :
-    weaker_exchange_axiom G.system.feasible_set :=
-  sorry
+theorem weaker_exchange_axiom' {G : Greedoid α} :
+    weaker_exchange_axiom G.system.feasible_set := by
+  apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 2).mp
+  exact G.system.exchange_axiom
+
+/-- Greedoid is full if the ground set is feasible. -/
+def full (G : Greedoid α) := (@Finset.univ α _) ∈ₛ G
+
+/-- The interval property is satisfied by matroids, antimatroids, and some greedoids. -/
+def interval_property (G : Greedoid α) :=
+  {A : Finset α} → A ∈ₛ G →
+  {B : Finset α} → B ∈ₛ G →
+  {C : Finset α} → C ∈ₛ G →
+  A ⊆ B → B ⊆ C → {x : α} → x ∉ C →
+  A ∪ {x} ∈ₛ G → C ∪ {x} ∈ₛ G → B ∪ {x} ∈ₛ G
 
 end Greedoid
