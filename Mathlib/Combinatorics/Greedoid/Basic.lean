@@ -153,6 +153,18 @@ structure GreedoidLanguage (α : Type _) [Fintype α] where
   exchange_axiom : {w₁ : List α} → w₁ ∈ language → {w₂ : List α} → w₂ ∈ language →
     w₁.length > w₂.length → ∃ x ∈ w₁, x :: w₂ ∈ language
 
+/-- List of axioms in `GreedoidLanguage` -/
+def greedoidLanguageAxiom {α : Type _} (Lang : Finset (List α)) :=
+  (∀ w ∈ Lang, w.Nodup) ∧
+  (∅ ∈ Lang) ∧
+  (∀ w₁ w₂ : List α, w₂ ++ w₁ ∈ Lang → w₁ ∈ Lang) ∧
+  ({w₁ : List α} → w₁ ∈ Lang → {w₂ : List α} → w₂ ∈ Lang →
+    w₁.length > w₂.length → ∃ x ∈ w₁, x :: w₂ ∈ Lang)
+
+theorem greedoidLanguageAxiom_greedoidLangauge {α : Type _} [Fintype α] {L : GreedoidLanguage α} :
+    greedoidLanguageAxiom L.language :=
+  ⟨L.simple, L.contains_empty, L.contains_prefix, L.exchange_axiom⟩
+
 /-- Set System version of greedoid. -/
 structure GreedoidSystem (α : Type _) [Fintype α] [DecidableEq α] where
   /-- `feasible_set` contains sets which are feasible. -/
@@ -161,6 +173,15 @@ structure GreedoidSystem (α : Type _) [Fintype α] [DecidableEq α] where
   contains_empty : ∅ ∈ feasible_set
   /-- Exchange Axiom -/
   exchange_axiom : exchange_axiom feasible_set
+
+/-- List of axioms in `GreedoidSystem` -/
+def greedoidSystemAxiom {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
+  ∅ ∈ Sys ∧ exchange_axiom Sys
+
+theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [DecidableEq α]
+  {S : GreedoidSystem α} :
+    greedoidSystemAxiom S.feasible_set :=
+  ⟨S.contains_empty, S.exchange_axiom⟩
 
 /-- Checks if the converted set equals the feasible set.
 
@@ -230,6 +251,7 @@ infix:50 " ∉ₛ " => fun s G => ¬ (Greedoid.finsetMem s G)
 @[inherit_doc] infix:50 " ∈ₗ " => Greedoid.listMem
 /-- Negated version of `∉ₗ` -/
 infix:50 " ∉ₗ " => fun w G => ¬ (Greedoid.listMem w G)
+/-- Prefer `∈ₛ` For greedoids. -/
 instance {α : Type _} [Fintype α] [DecidableEq α] :
   Membership (Finset α) (Greedoid α) := ⟨Greedoid.finsetMem⟩
 
@@ -257,10 +279,13 @@ theorem emptyset_mem {G : Greedoid α} : (∅ : Finset α) ∈ G := G.system.con
 theorem nil_toFinset_mem {G : Greedoid α} : [].toFinset ∈ G := G.system.contains_empty
 
 theorem finsetMem_mem_iff {G : Greedoid α} {s : Finset α} :
-    s ∈ₛ G ↔ s ∈ G := by rfl
+    s ∈ G ↔ s ∈ₛ G := by rfl
 
 theorem word_mem_language_toFinset_mem {G : Greedoid α} {w : List α} (hw : w ∈ₗ G) :
-    w.toFinset ∈ G := sorry
+    w.toFinset ∈ₛ G := by
+  have := G.related.1
+  simp [Greedoid.finsetMem, this, Greedoid.fromLanguageToSystem]
+  exists w
 
 theorem finset_feasible_exists_word {G : Greedoid α} {s : Finset α} (hs : s ∈ₛ G) :
     ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := sorry
@@ -337,30 +362,36 @@ theorem rank_eq_bases_card :
   . sorry
   . sorry
 
+@[simp]
 theorem rank_empty : G.rank ∅ = 0 := by
   simp [rank, Finset.subset_empty, Finset.filter_eq', G.system.contains_empty]
 
 theorem rank_le_card : G.rank s ≤ s.card := sorry
 
-theorem subset_then_rank_le (hs : s ⊆ t) : s.card ≤ t.card := sorry
+theorem subset_then_rank_le (hs : s ⊆ t) : G.rank s ≤ G.rank t := sorry
 
+@[simp]
 theorem local_submodularity
   (h₁ : G.rank s = G.rank (s ∪ {x}))
   (h₂ : G.rank s = G.rank (s ∪ {y})) :
-    G.rank s = G.rank (s ∪ {x, y}) := by
-  sorry
+    G.rank (s ∪ {x, y}) = G.rank s := sorry
 
-theorem stronger_local_submodularity
+theorem stronger_local_submodularity_left
   (h₁ : G.rank s = G.rank (s ∩ t))
   (h₂ : G.rank t = G.rank (s ∩ t)) :
-    G.rank s = G.rank (s ∪ t) := by
-  sorry
+    G.rank s = G.rank (s ∪ t) := sorry
 
+theorem stronger_local_submodularity_right
+  (h₁ : G.rank s = G.rank (s ∩ t))
+  (h₂ : G.rank t = G.rank (s ∩ t)) :
+    G.rank t = G.rank (s ∪ t) := by
+  simp [h₂, ← h₁, stronger_local_submodularity_left h₁ h₂]
+
+-- TODO: Looking for better name
 theorem rank_lt_succ_lt
   (hs₁ : G.rank s < G.rank (s ∪ {x}))
   (hs₂ : G.rank s < G.rank (s ∪ {y})) :
-    G.rank s + 1 < G.rank (s ∪ {x, y}) := by
-  sorry
+    G.rank s + 1 < G.rank (s ∪ {x, y}) := sorry
 
 theorem rank_of_feasible (hs : s ∈ₛ G) : G.rank s = s.card := sorry
 
@@ -389,6 +420,7 @@ theorem self_subset_closure : s ⊆ G.closure s := by
   have hx : {x} ⊆ s := by simp only [singleton_subset_iff, hx]
   simp [Finset.union_eq_left_iff_subset.mpr hx]
 
+@[simp]
 theorem rank_closure_eq_rank_self : G.rank (G.closure s) = G.rank s := sorry
 
 theorem feasible_iff_elem_notin_closure_minus_elem :
@@ -411,7 +443,7 @@ theorem closure_idempotent : G.closure (G.closure s) = G.closure s :=
 
 theorem closure_exchange_property
   (hx : x ∉ s) (hy : y ∉ s) (hs : s ∪ {x} ∈ₛ G)
-  (hx : x ∈ G.closure (s ∪ {y})) :
+  (h : x ∈ G.closure (s ∪ {y})) :
     y ∈ G.closure (s ∪ {x}) := sorry
 
 /-- `cospanning` is an equivalence relation in `2^E`. -/
@@ -419,27 +451,125 @@ def cospanning (G : Greedoid α) (s t : Finset α) := G.closure s = G.closure t
 
 section cospanning
 
-protected theorem cospanning.refl : ∀ s, G.cospanning s s := by simp [cospanning]
+theorem cospanning_refl : ∀ s, G.cospanning s s := by simp [cospanning]
 
-protected theorem cospanning.symm (h : G.cospanning s t) : G.cospanning t s := by
+theorem cospanning_symm (h : G.cospanning s t) : G.cospanning t s := by
   simp only [cospanning] at h; simp only [cospanning, h]
 
-protected theorem cospanning.comm : G.cospanning s t ↔ G.cospanning t s :=
-  ⟨cospanning.symm, cospanning.symm⟩
+theorem cospanning_comm : G.cospanning s t ↔ G.cospanning t s :=
+  ⟨cospanning_symm, cospanning_symm⟩
 
-protected theorem cospanning.trans {s t u : Finset α}
+theorem cospanning_trans {s t u : Finset α}
   (hst : G.cospanning s t) (htu : G.cospanning t u) :
     G.cospanning s u := by
   simp only [cospanning] at hst htu; simp only [cospanning, hst, htu]
 
-theorem cospanning.eqv : Equivalence (G.cospanning) :=
-  ⟨cospanning.refl, cospanning.symm, cospanning.trans⟩
+theorem cospanning_eqv : Equivalence (G.cospanning) :=
+  ⟨cospanning_refl, cospanning_symm, cospanning_trans⟩
 
-instance isSetoid (G : Greedoid α) : Setoid (Finset α) :=
-  Setoid.mk G.cospanning cospanning.eqv
+theorem cospanning_rel_left_union (h : G.cospanning s t) : G.cospanning s (s ∪ t) := sorry
+
+theorem cospanning_rel_right_union (h : G.cospanning s t) : G.cospanning (s ∪ t) t :=
+  cospanning_trans (cospanning_symm (cospanning_rel_left_union h)) h
+
+theorem cospanning_rel_between_subset_left {s t u : Finset α}
+  (hst : s ⊆ t) (htu : t ⊆ u) (hsu : G.cospanning s u) :
+    G.cospanning s t := sorry
+
+theorem cospanning_rel_between_subset_right {s t u : Finset α}
+  (hst : s ⊆ t) (htu : t ⊆ u) (hsu : G.cospanning s u) :
+    G.cospanning t u :=
+  G.cospanning_trans (cospanning_symm (cospanning_rel_between_subset_left hst htu hsu)) hsu
+
+theorem cospanning_rel_ex
+  (h₁ : G.cospanning (s ∪ {y}) (s ∪ {x, y}))
+  (h₂ : ¬ G.cospanning (s ∪ {x}) (s ∪ {x, y})) :
+    ∃ z ∈ s ∪ {x}, G.cospanning ((s ∪ {x}) \ {z}) (s ∪ {x}) := sorry
+
+theorem cospanning_rel_ex'
+  (h₁ : G.cospanning (s ∪ {y}) (s ∪ {x, y}))
+  (h₂ : ¬ G.cospanning (s ∪ {x}) (s ∪ {x, y})) :
+    ∃ z ∈ s ∪ {x}, G.cospanning (s ∪ {x}) ((s ∪ {x}) \ {z}) :=
+  let ⟨z, hz⟩ := cospanning_rel_ex h₁ h₂
+  ⟨z, hz.1, G.cospanning_symm hz.2⟩
 
 end cospanning
 
 end closure
 
 end Greedoid
+
+-- TODO: Move to Matroid.Basic.lean
+
+structure Matroid (α : Type _) [Fintype α] [DecidableEq α] extends Greedoid α where
+  wo_lower_bound :
+    {A : Finset α} → A ∈ system.feasible_set →
+    {B : Finset α} → B ∈ system.feasible_set → A ⊆ B →
+    {x : α} → x ∉ B →
+    B ∪ {x} ∈ system.feasible_set → A ∪ {x} ∈ system.feasible_set
+
+namespace Matroid
+
+variable {α : Type _} [Fintype α] [DecidableEq α]
+
+theorem has_no_lower_bound {M : Matroid α} : M.interval_property_wo_lower_bound := M.wo_lower_bound
+
+/-- `s ∈ₛ M` if `s` is feasible. -/
+def Matroid.finsetMem (s : Finset α) (M : Matroid α) := s ∈ M.system.feasible_set
+
+/-- `w ∈ₗ M` if `w` is in the language. -/
+def Matroid.listMem (w : List α) (M : Matroid α) := w ∈ M.language.language
+
+@[inherit_doc] infix:50 " ∈ₛ " => Matroid.finsetMem
+/-- Negated version of `∉ₛ` -/
+infix:50 " ∉ₛ " => fun s G => ¬ (Matroid.finsetMem s G)
+@[inherit_doc] infix:50 " ∈ₗ " => Matroid.listMem
+/-- Negated version of `∉ₗ` -/
+infix:50 " ∉ₗ " => fun w G => ¬ (Matroid.listMem w G)
+/-- Prefer `∈` For matroids. -/
+instance : Membership (Finset α) (Matroid α) where
+  mem s M := s ∈ M.system.feasible_set
+
+section IndependentSet
+
+variable {M : Matroid α} (Sys : Finset (Finset α))
+
+def I₁ := ∅ ∈ Sys
+
+def I₂ := {s : Finset α} → s ∈ Sys → {t : Finset α} → t ⊆ s → t ∈ Sys
+
+def I₃ := {s : Finset α} → s ∈ Sys → {t : Finset α} → t ∈ Sys →
+  s.card = t.card + 1 → ∃ x ∈ s \ t, t ∪ {x} ∈ Sys
+
+def matroidIndependenceAxiom := I₁ Sys ∧ I₂ Sys ∧ I₃ Sys
+
+theorem matroid_I₁ : I₁ M.system.feasible_set := by simp [I₁, M.system.contains_empty]
+
+theorem matroid_I₂ : I₂ M.system.feasible_set := sorry
+
+theorem matroid_I₃ : I₃ M.system.feasible_set := sorry
+
+
+
+end IndependentSet
+
+end Matroid
+
+-- TODO: Move to Antimatroid.Basic.lean
+
+structure Antimatroid (α : Type _) [Fintype α] [DecidableEq α] extends Greedoid α where
+  wo_upper_bound :
+    {A : Finset α} → A ∈ system.feasible_set →
+    {B : Finset α} → B ∈ system.feasible_set → B ⊆ A →
+    {x : α} → x ∉ A →
+    B ∪ {x} ∈ system.feasible_set → A ∪ {x} ∈ system.feasible_set
+
+namespace Antimatroid
+
+variable {α : Type _} [Fintype α] [DecidableEq α] {A : Antimatroid α}
+
+theorem has_no_upper_bound : A.interval_property_wo_upper_bound := A.wo_upper_bound
+
+
+
+end Antimatroid
