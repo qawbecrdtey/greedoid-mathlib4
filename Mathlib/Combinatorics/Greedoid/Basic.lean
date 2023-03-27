@@ -336,7 +336,6 @@ theorem greedoid_system_accessible : accessible G.system.feasible_set := by
       have := wordMem_nodup hw₁
       simp at this
       simp [hw₂, Finset.insert_sdiff_of_mem]
-
       sorry
 
 theorem weak_exchange_axiom' : weak_exchange_axiom G.system.feasible_set := by
