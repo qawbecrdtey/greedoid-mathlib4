@@ -242,15 +242,15 @@ protected def Greedoid.finsetMem {α : Type _} [Fintype α] [DecidableEq α]
   (s : Finset α) (G : Greedoid α) := s ∈ G.system.feasible_set
 
 /-- Definition of `List` (or equivalently, `Word`) in `Greedoid` -/
-protected def Greedoid.listMem {α : Type _} [Fintype α] [DecidableEq α]
+protected def Greedoid.wordMem {α : Type _} [Fintype α] [DecidableEq α]
   (w : List α) (G : Greedoid α) := w ∈ G.language.language
 
 @[inherit_doc] infix:50 " ∈ₛ " => Greedoid.finsetMem
 /-- Negated version of `∉ₛ` -/
 infix:50 " ∉ₛ " => fun s G => ¬ (Greedoid.finsetMem s G)
-@[inherit_doc] infix:50 " ∈ₗ " => Greedoid.listMem
+@[inherit_doc] infix:50 " ∈ₗ " => Greedoid.wordMem
 /-- Negated version of `∉ₗ` -/
-infix:50 " ∉ₗ " => fun w G => ¬ (Greedoid.listMem w G)
+infix:50 " ∉ₗ " => fun w G => ¬ (Greedoid.wordMem w G)
 /-- Prefer `∈ₛ` For greedoids. -/
 instance {α : Type _} [Fintype α] [DecidableEq α] :
   Membership (Finset α) (Greedoid α) := ⟨Greedoid.finsetMem⟩
@@ -259,49 +259,91 @@ namespace Greedoid
 
 open List Finset Multiset
 
-variable {α : Type _} [Fintype α] [DecidableEq α]
-
-theorem greedoid_system_accessible {G : Greedoid α} : accessible G.system.feasible_set := by
-  simp [accessible, G.system.contains_empty]
-  intro s hs₁ hs₂
-  induction' s using Finset.induction_on with a s ha ih
-  . simp at hs₂
-  . sorry
+variable {α : Type _} [Fintype α] [DecidableEq α] {G : Greedoid α}
 
 section Membership
 
-theorem emptyset_finsetMem {G : Greedoid α} : (∅ : Finset α) ∈ₛ G := G.system.contains_empty
+theorem emptyset_finsetMem : (∅ : Finset α) ∈ₛ G := G.system.contains_empty
 
-theorem nil_listMem {G : Greedoid α} : ([] : List α) ∈ₗ G := G.language.contains_empty
+theorem nil_wordMem : ([] : List α) ∈ₗ G := G.language.contains_empty
 
-theorem emptyset_mem {G : Greedoid α} : (∅ : Finset α) ∈ G := G.system.contains_empty
+theorem emptyset_mem : (∅ : Finset α) ∈ G := G.system.contains_empty
 
-theorem nil_toFinset_mem {G : Greedoid α} : [].toFinset ∈ G := G.system.contains_empty
+theorem nil_toFinset_mem : [].toFinset ∈ G := G.system.contains_empty
 
-theorem finsetMem_mem_iff {G : Greedoid α} {s : Finset α} :
+theorem wordMem_nodup {w : List α} (hw : w ∈ₗ G) : w.Nodup := G.language.simple _ hw
+
+@[simp]
+theorem finsetMem_mem_iff {s : Finset α} :
     s ∈ G ↔ s ∈ₛ G := by rfl
 
-theorem word_mem_language_toFinset_mem {G : Greedoid α} {w : List α} (hw : w ∈ₗ G) :
+theorem word_mem_language_toFinset_mem {w : List α} (hw : w ∈ₗ G) :
     w.toFinset ∈ₛ G := by
   have := G.related.1
   simp [Greedoid.finsetMem, this, Greedoid.fromLanguageToSystem]
   exists w
 
-theorem finset_feasible_exists_word {G : Greedoid α} {s : Finset α} (hs : s ∈ₛ G) :
-    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := sorry
+theorem finset_feasible_exists_word {s : Finset α} (hs : s ∈ₛ G) :
+    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := by
+  simp [Greedoid.finsetMem, G.related.1, Greedoid.fromLanguageToSystem] at hs
+  let ⟨a, ha₁, ha₂⟩ := hs
+  exists a; exact And.intro ha₁ ha₂.symm
 
-theorem finset_feasible_exists_feasible_ssubset {G : Greedoid α} {s : Finset α} (hs : s ≠ ∅) :
-    ∃ s', s' ⊂ s ∧ s ∈ₛ G := sorry
+theorem finset_feasible_exists_feasible_ssubset {s : Finset α}
+  (hs₁ : s ∈ₛ G) (hs₂ : s ≠ ∅) :
+    ∃ s', s' ⊂ s ∧ (s \ s').card = 1 ∧ s' ∈ₛ G := by
+  let ⟨w, hw₁, hw₂⟩ := finset_feasible_exists_word hs₁
+  cases w
+  case nil => simp_all
+  case cons h t =>
+    have : (h :: t).Nodup := wordMem_nodup hw₁
+    exists t.toFinset
+    simp at *
+    repeat apply And.intro
+    . rw [hw₂]; intro _ _; simp_all
+    . intro h'; rw [hw₂] at h'
+      have : (h :: t).Nodup := wordMem_nodup hw₁
+      simp at this
+      apply this.1
+      simp at h'
+      suffices h₁ : h ∈ t.toFinset by rw [← List.mem_toFinset]; exact h₁
+      apply h'
+      simp
+    . apply And.intro
+      . simp [hw₂]
+        rw [Finset.card_sdiff]
+        . simp_all
+        . intro _ _; simp_all
+      . have : t ∈ₗ G := G.language.contains_prefix t [h] (by
+          simp [Greedoid.wordMem] at hw₁; simp [hw₁])
+        simp [this, Greedoid.fromLanguageToSystem, Greedoid.finsetMem]
+        simp [G.related.1, Greedoid.fromLanguageToSystem]
+        exists t
 
 end Membership
+#check Finset.insert_sdiff_of_mem
+theorem greedoid_system_accessible : accessible G.system.feasible_set := by
+  simp [accessible, G.system.contains_empty]
+  intro s hs₁ hs₂
+  induction' s using Finset.induction_on with a s ha ih
+  . simp at hs₂
+  . clear hs₂; clear hs₂
+    let ⟨w, hw₁, hw₂⟩ := finset_feasible_exists_word hs₁
+    cases w
+    case nil => simp_all
+    case cons h t =>
+      exists h
+      have := wordMem_nodup hw₁
+      simp at this
+      simp [hw₂, Finset.insert_sdiff_of_mem]
 
-theorem weak_exchange_axiom' {G : Greedoid α} :
-    weak_exchange_axiom G.system.feasible_set := by
+      sorry
+
+theorem weak_exchange_axiom' : weak_exchange_axiom G.system.feasible_set := by
   apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 1).mp
   exact G.system.exchange_axiom
 
-theorem weaker_exchange_axiom' {G : Greedoid α} :
-    weaker_exchange_axiom G.system.feasible_set := by
+theorem weaker_exchange_axiom' : weaker_exchange_axiom G.system.feasible_set := by
   apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 2).mp
   exact G.system.exchange_axiom
 
@@ -335,7 +377,7 @@ def interval_property_wo_upper_bound (G : Greedoid α) :=
   {x : α} → x ∉ A →
   B ∪ {x} ∈ₛ G → A ∪ {x} ∈ₛ G
 
-theorem interval_property_wo_upper_bound_then_interval_property {G : Greedoid α}
+theorem interval_property_wo_upper_bound_then_interval_property
     (hG : interval_property_wo_upper_bound G) : interval_property G := by
   intro _ hA _ hB _ _ h₁ h₂ _ hx hAx _
   exact hG hB hA h₁ (fun h => hx (h₂ h)) hAx
@@ -351,7 +393,7 @@ def rank (G : Greedoid α) (s : Finset α) :=
 
 section rank
 
-variable {G : Greedoid α} {s t : Finset α} {x y : α}
+variable {s t : Finset α} {x y : α}
 
 theorem rank_eq_bases_card :
     ∀ b ∈ SetSystem.bases (G.system.feasible_set) s, b.card = G.rank s := by
@@ -412,7 +454,7 @@ def closure (G : Greedoid α) (s : Finset α) : Finset α:=
 
 section closure
 
-variable {G : Greedoid α} {s t : Finset α} {x y : α}
+variable {s t : Finset α} {x y : α}
 
 theorem self_subset_closure : s ⊆ G.closure s := by
   simp [closure]
@@ -518,14 +560,14 @@ theorem has_no_lower_bound {M : Matroid α} : M.interval_property_wo_lower_bound
 def Matroid.finsetMem (s : Finset α) (M : Matroid α) := s ∈ M.system.feasible_set
 
 /-- `w ∈ₗ M` if `w` is in the language. -/
-def Matroid.listMem (w : List α) (M : Matroid α) := w ∈ M.language.language
+def Matroid.wordMem (w : List α) (M : Matroid α) := w ∈ M.language.language
 
 @[inherit_doc] infix:50 " ∈ₛ " => Matroid.finsetMem
 /-- Negated version of `∉ₛ` -/
 infix:50 " ∉ₛ " => fun s G => ¬ (Matroid.finsetMem s G)
-@[inherit_doc] infix:50 " ∈ₗ " => Matroid.listMem
+@[inherit_doc] infix:50 " ∈ₗ " => Matroid.wordMem
 /-- Negated version of `∉ₗ` -/
-infix:50 " ∉ₗ " => fun w G => ¬ (Matroid.listMem w G)
+infix:50 " ∉ₗ " => fun w G => ¬ (Matroid.wordMem w G)
 /-- Prefer `∈` For matroids. -/
 instance : Membership (Finset α) (Matroid α) where
   mem s M := s ∈ M.system.feasible_set
