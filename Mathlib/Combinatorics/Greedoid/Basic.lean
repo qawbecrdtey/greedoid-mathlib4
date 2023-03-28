@@ -146,7 +146,7 @@ structure GreedoidLanguage (α : Type _) [Fintype α] where
   /-- Every words of the `language` are simple, i.e., no words contains duplicates. -/
   simple : ∀ w ∈ language, w.Nodup
   /-- `language` contains an empty word. -/
-  contains_empty : ∅ ∈ language
+  contains_empty : [] ∈ language
   /-- For every word `w = w₂ ++ w₁ ∈ language`, `w₁ ∈ language` also holds. -/
   contains_prefix : ∀ w₁ w₂ : List α, w₂ ++ w₁ ∈ language → w₁ ∈ language
   /-- Exchange Axiom -/
@@ -186,13 +186,39 @@ theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [Decidable
 /-- Checks if the converted set equals the feasible set.
 
     `feasible_set = {↑w | w ∈ language}` -/
-protected def Greedoid.fromLanguageToSystem {α : Type _} [Fintype α] [DecidableEq α]
+protected def GreedoidLanguage.fromLanguageToSystem {α : Type _} [Fintype α] [DecidableEq α]
   (L : GreedoidLanguage α) := L.language.image (fun w : List α => (w.toFinset : Finset α))
+
+#check List.toFinset_union
+
+theorem greedoidSystemAxiom_fromLanguageToSystem {α : Type _} [Fintype α] [DecidableEq α]
+  {L : GreedoidLanguage α} :
+    greedoidSystemAxiom L.fromLanguageToSystem := ⟨by
+  simp [GreedoidLanguage.fromLanguageToSystem, L.contains_empty], by
+  simp [GreedoidLanguage.fromLanguageToSystem, exchange_axiom]
+  intro w₁ hw₁ w₂ hw₂ hw
+  have := L.exchange_axiom hw₁ hw₂
+  rw [List.toFinset_card_of_nodup (L.simple _ hw₁),
+    List.toFinset_card_of_nodup (L.simple _ hw₂)] at hw
+  let ⟨s, hs⟩ := this hw
+  exists s
+  apply And.intro
+  . apply And.intro hs.1
+    have := L.simple _ hs.2
+    simp at this; exact this.1
+  . exists s :: w₂
+    apply And.intro hs.2
+    ext x
+    constructor <;> intro h
+    . simp at h
+      apply h.elim <;> intro h <;> simp [h]
+    . simp at h
+      apply h.elim <;> intro h <;> simp [h]⟩
 
 /-- Checks if the converted language equals the language.
 
     `language = {w | underlying set of every prefix of w is feasible}` -/
-protected def Greedoid.fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
+protected def GreedoidSystem.fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
   (S : GreedoidSystem α) : Finset (List α) :=
   let perm_set := Finset.bunionᵢ (S.feasible_set.map ⟨fun s => s.val.lists, by
     intro s
@@ -217,6 +243,10 @@ protected def Greedoid.fromSystemToLanguage {α : Type _} [Fintype α] [Decidabl
     simp only [hl, hr]⟩) id
   (perm_set.filter (fun l => ∀ l' ∈ l.tails, l'.toFinset ∈ S.feasible_set))
 
+theorem greedoidLanguageAxiom_fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
+  {S : GreedoidSystem α} :
+    greedoidLanguageAxiom S.fromSystemToLanguage := sorry
+
 /-- `relatedLanguageSystem` checks if a given language and system are related to each other.
     That is, given that the language is hereditary,
 
@@ -224,7 +254,7 @@ protected def Greedoid.fromSystemToLanguage {α : Type _} [Fintype α] [Decidabl
     2. `language = {w | underlying set of every prefix of w is feasible}` -/
 protected def Greedoid.relatedLanguageSystem {α : Type _} [Fintype α] [DecidableEq α]
   (L : GreedoidLanguage α) (S : GreedoidSystem α) : Prop :=
-  S.feasible_set = Greedoid.fromLanguageToSystem L ∧ L.language = Greedoid.fromSystemToLanguage S
+  S.feasible_set = L.fromLanguageToSystem ∧ L.language = S.fromSystemToLanguage
 
 /-- Merging of language and system version of greedoid.
     This will (potentially) help `Greedoid` cover theorems written in
@@ -280,12 +310,12 @@ theorem finsetMem_mem_iff {s : Finset α} :
 theorem word_mem_language_toFinset_mem {w : List α} (hw : w ∈ₗ G) :
     w.toFinset ∈ₛ G := by
   have := G.related.1
-  simp [Greedoid.finsetMem, this, Greedoid.fromLanguageToSystem]
+  simp [Greedoid.finsetMem, this, GreedoidLanguage.fromLanguageToSystem]
   exists w
 
 theorem finset_feasible_exists_word {s : Finset α} (hs : s ∈ₛ G) :
     ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := by
-  simp [Greedoid.finsetMem, G.related.1, Greedoid.fromLanguageToSystem] at hs
+  simp [Greedoid.finsetMem, G.related.1, GreedoidLanguage.fromLanguageToSystem] at hs
   let ⟨a, ha₁, ha₂⟩ := hs
   exists a; exact And.intro ha₁ ha₂.symm
 
@@ -316,12 +346,12 @@ theorem finset_feasible_exists_feasible_ssubset {s : Finset α}
         . intro _ _; simp_all
       . have : t ∈ₗ G := G.language.contains_prefix t [h] (by
           simp [Greedoid.wordMem] at hw₁; simp [hw₁])
-        simp [this, Greedoid.fromLanguageToSystem, Greedoid.finsetMem]
-        simp [G.related.1, Greedoid.fromLanguageToSystem]
+        simp [this, GreedoidLanguage.fromLanguageToSystem, Greedoid.finsetMem]
+        simp [G.related.1, GreedoidLanguage.fromLanguageToSystem]
         exists t
 
 end Membership
-#check Finset.insert_sdiff_of_mem
+
 theorem greedoid_system_accessible : accessible G.system.feasible_set := by
   simp [accessible, G.system.contains_empty]
   intro s hs₁ hs₂
