@@ -291,6 +291,12 @@ variable {α : Type _} [Fintype α] [DecidableEq α] {G : Greedoid α}
 
 section Membership
 
+theorem system_feasible_set_mem_mem {s : Finset α} : s ∈ G.system.feasible_set ↔ s ∈ G := by rfl
+
+theorem system_feasible_set_mem_memₛ {s : Finset α} : s ∈ G.system.feasible_set ↔ s ∈ₛ G := by rfl
+
+theorem language_language_mem_memₗ {w : List α} : w ∈ G.language.language ↔ w ∈ₗ G := by rfl
+
 theorem emptyset_finsetMem : (∅ : Finset α) ∈ₛ G := G.system.contains_empty
 
 theorem nil_wordMem : ([] : List α) ∈ₗ G := G.language.contains_empty
@@ -509,6 +515,7 @@ theorem rank_of_feasible (hs : s ∈ₛ G) : G.rank s = s.card := sorry
 
 theorem rank_of_infeasible (hs : s ∉ₛ G) : G.rank s < s.card := sorry
 
+@[simp]
 theorem rank_eq_card_iff_feasible : G.rank s = s.card ↔ s ∈ₛ G := by
   apply Iff.intro _ (fun h => rank_of_feasible h)
   intro h
@@ -516,6 +523,8 @@ theorem rank_eq_card_iff_feasible : G.rank s = s.card ↔ s ∈ₛ G := by
   simp at this
   apply this
   simp only [h, le_refl]
+
+theorem ssubset_of_feasible_rank (hs : s ∈ₛ G) (h : t ⊂ s) : G.rank t < G.rank s := sorry
 
 end rank
 
@@ -546,7 +555,8 @@ theorem feasible_iff_elem_notin_closure_minus_elem :
     have hx : {x} ⊆ s := by simp only [singleton_subset_iff, hx]
     simp [Finset.union_eq_left_iff_subset.mpr hx] at h'
     rw [rank_of_feasible h] at h'
-    sorry
+    have := @ssubset_of_feasible_rank _ _ _ G s (s \ {x}) h sorry
+    simp [← h', rank_eq_card_iff_feasible.mpr h] at this
   . sorry
 
 theorem closure_eq_of_subset_adj_closure (hst : s ⊆ G.closure t) (hts : t ⊆ G.closure s) :
@@ -621,7 +631,8 @@ structure Matroid (α : Type _) [Fintype α] [DecidableEq α] extends Greedoid �
     {A : Finset α} → A ∈ system.feasible_set →
     {B : Finset α} → B ∈ system.feasible_set → A ⊆ B →
     {x : α} → x ∉ B →
-    B ∪ {x} ∈ system.feasible_set → A ∪ {x} ∈ system.feasible_set
+    B ∪ {x} ∈ system.feasible_set →
+    A ∪ {x} ∈ system.feasible_set
 
 namespace Matroid
 
@@ -645,6 +656,10 @@ infix:50 " ∉ₗ " => fun w G => ¬ (Matroid.wordMem w G)
 instance : Membership (Finset α) (Matroid α) where
   mem s M := s ∈ M.system.feasible_set
 
+@[simp]
+theorem system_feasible_set_mem_mem {M : Matroid α} {s : Finset α} :
+    s ∈ M.system.feasible_set ↔ s ∈ M := by rfl
+
 section IndependentSet
 
 variable {M : Matroid α} (Sys : Finset (Finset α))
@@ -658,13 +673,61 @@ def I₃ := {s : Finset α} → s ∈ Sys → {t : Finset α} → t ∈ Sys →
 
 def matroidIndependenceAxiom := I₁ Sys ∧ I₂ Sys ∧ I₃ Sys
 
-theorem matroid_I₁ : I₁ M.system.feasible_set := by simp [I₁, M.system.contains_empty]
+theorem matroid_I₁ : I₁ M.system.feasible_set := by simp only [I₁, M.system.contains_empty]
 
-theorem matroid_I₂ : I₂ M.system.feasible_set := sorry
+theorem matroid_I₂Aux {s : Finset α} {a : α} (ha : a ∉ s) (hs : s ∪ {a} ∈ M) : s ∈ M := by
+  induction' s using Finset.induction_on with x s hx ih generalizing a
+  . exact matroid_I₁
+  . simp [not_or] at ha
+    let ⟨ha₁, ha₂⟩ := ha; clear ha; clear ha
+    have : insert x s = s ∪ {x} := by ext y; constructor <;> intro h <;> simp at * <;> tauto
+    rw [this]
+    sorry
+
+
+theorem matroid_I₂ : I₂ M.system.feasible_set := by
+  intro s hs t ht
+  induction' t using Finset.induction_on with a t ha ih
+  . exact M.system.contains_empty
+  . simp [ha]
+    have : t ∪ {a} ∈ M := by
+      apply @Matroid.wo_lower_bound α _ _ M t _ (s \ {a}) _ _ a (by simp)
+      . simp
+        have : s ∪ {a} = s := by
+          ext x
+          apply Iff.intro _ (fun h => by simp; exact Or.inl h)
+          intro h
+          simp at h
+          apply h.elim <;> intro h <;> simp_all
+          apply ht
+          simp
+        rw [this]
+        exact hs
+      . eapply ih
+        intro x hx
+        apply ht
+        simp [hx]
+      . apply @matroid_I₂Aux _ _ _ M (s \ {a}) a (by simp)
+        simp_all
+        have : s ∪ {a} = s := by
+          ext x
+          apply Iff.intro _ (fun h => by simp; exact Or.inl h)
+          intro h
+          simp at h
+          apply h.elim <;> intro h <;> simp_all
+          apply ht
+          simp
+        rw [this]
+        exact hs
+      . intro x hx
+        simp
+        constructor
+        . apply ht; simp; exact Or.inr hx
+        . intro hx'; simp_all
+    have ht : t ∪ {a} = insert a t := by ext x; constructor <;> intro h <;> simp at * <;> tauto
+    simp only [← ht, this]
 
 theorem matroid_I₃ : I₃ M.system.feasible_set := sorry
-
-
 
 end IndependentSet
 
