@@ -189,8 +189,6 @@ theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [Decidable
 protected def GreedoidLanguage.fromLanguageToSystem {α : Type _} [Fintype α] [DecidableEq α]
   (L : GreedoidLanguage α) := L.language.image (fun w : List α => (w.toFinset : Finset α))
 
-#check List.toFinset_union
-
 theorem greedoidSystemAxiom_fromLanguageToSystem {α : Type _} [Fintype α] [DecidableEq α]
   {L : GreedoidLanguage α} :
     greedoidSystemAxiom L.fromLanguageToSystem := ⟨by
