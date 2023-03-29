@@ -355,9 +355,9 @@ end Membership
 theorem greedoid_system_accessible : accessible G.system.feasible_set := by
   simp [accessible, G.system.contains_empty]
   intro s hs₁ hs₂
-  induction' s using Finset.induction_on with a s ha ih
+  induction s using Finset.induction_on
   . simp at hs₂
-  . clear hs₂; clear hs₂
+  . clear hs₂
     let ⟨w, hw₁, hw₂⟩ := finset_feasible_exists_word hs₁
     cases w
     case nil => simp_all
@@ -366,7 +366,12 @@ theorem greedoid_system_accessible : accessible G.system.feasible_set := by
       have := wordMem_nodup hw₁
       simp at this
       simp [hw₂, Finset.insert_sdiff_of_mem]
-      sorry
+      have ht := G.language.contains_prefix _ [h] hw₁
+      rw [Finset.sdiff_singleton_not_mem_eq_self]
+      . rw [G.related.1]
+        simp [GreedoidLanguage.fromLanguageToSystem]
+        exists t
+      . simp [this.1]
 
 theorem weak_exchange_axiom' : weak_exchange_axiom G.system.feasible_set := by
   apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 1).mp
@@ -411,6 +416,31 @@ theorem interval_property_wo_upper_bound_then_interval_property
   intro _ hA _ hB _ _ h₁ h₂ _ hx hAx _
   exact hG hB hA h₁ (fun h => hx (h₂ h)) hAx
 
+
+/-- A base of a greedoid. -/
+def base (G : Greedoid α) := SetSystem.base G.system.feasible_set
+
+/-- A bases of a given set `s` of a greedoid. -/
+def bases (G : Greedoid α) (s : Finset α) := SetSystem.bases G.system.feasible_set s
+
+theorem base_bases_eq : G.base = G.bases (@Finset.univ α _) := SetSystem.base_bases_eq
+
+theorem basis_feasible {s b : Finset α} (hb : b ∈ G.bases s) : b ∈ G.system.feasible_set := by
+  simp_all [bases, SetSystem.bases]
+
+theorem bases_nonempty {s : Finset α} : Nonempty (G.bases s) := by
+  sorry
+
+theorem bases_card_eq {s : Finset α}
+  {b₁ : Finset α} (hb₁ : b₁ ∈ G.bases s)
+  {b₂ : Finset α} (hb₂ : b₂ ∈ G.bases s) :
+    b₁.card = b₂.card := by
+  by_contra'
+  rw [← lt_or_lt_iff_ne] at this
+  apply this.elim <;> intro h <;> clear hb₂ <;> clear this
+  . sorry
+  . sorry
+
 -- TODO: Move to Rank.lean
 
 /-- A cardinality of largest feasible subset of `s` in `G`. -/
@@ -425,7 +455,7 @@ section rank
 variable {s t : Finset α} {x y : α}
 
 theorem rank_eq_bases_card :
-    ∀ b ∈ SetSystem.bases (G.system.feasible_set) s, b.card = G.rank s := by
+    ∀ b ∈ SetSystem.bases G.system.feasible_set s, b.card = G.rank s := by
   by_contra'
   let ⟨b, hb₁, hb₂⟩ := this; clear this
   rw [← lt_or_lt_iff_ne] at hb₂
