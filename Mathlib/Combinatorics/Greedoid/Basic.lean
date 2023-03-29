@@ -439,6 +439,10 @@ theorem bases_card_eq {s : Finset α}
   . sorry
   . sorry
 
+theorem basis_of_full_unique (hG : G.full) : ∃! b, b ∈ G.base := by
+  exists univ
+  sorry
+
 -- TODO: Move to Rank.lean
 
 /-- A cardinality of largest feasible subset of `s` in `G`. -/
