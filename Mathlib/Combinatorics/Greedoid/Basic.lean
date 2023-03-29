@@ -414,7 +414,6 @@ theorem interval_property_wo_upper_bound_then_interval_property
   intro _ hA _ hB _ _ h₁ h₂ _ hx hAx _
   exact hG hB hA h₁ (fun h => hx (h₂ h)) hAx
 
-
 /-- A base of a greedoid. -/
 def base (G : Greedoid α) := SetSystem.base G.system.feasible_set
 
@@ -426,22 +425,32 @@ theorem base_bases_eq : G.base = G.bases (@Finset.univ α _) := SetSystem.base_b
 theorem basis_feasible {s b : Finset α} (hb : b ∈ G.bases s) : b ∈ G.system.feasible_set := by
   simp_all [bases, SetSystem.bases]
 
-theorem bases_nonempty {s : Finset α} : Nonempty (G.bases s) := by
-  sorry
+theorem basis_def {s b : Finset α} :
+    b ∈ G.bases s ↔ (b ∈ₛ G ∧ b ⊆ s ∧ (∀ a ∈ s, a ∉ b → b ∪ {a} ∉ₛ G)) := by
+  constructor <;> intro h
+  . simp [bases, SetSystem.bases] at h
+    apply And.intro h.1 (And.intro h.2.1 _)
+    intro _ _ ha₂
+    have := h.2.2 _ ha₂
+    tauto
+  . simp [bases, SetSystem.bases]
+    apply And.intro h.1 (And.intro h.2.1 _)
+    tauto
+
+theorem bases_nonempty {s : Finset α} : Nonempty (G.bases s) := sorry
 
 theorem bases_card_eq {s : Finset α}
   {b₁ : Finset α} (hb₁ : b₁ ∈ G.bases s)
   {b₂ : Finset α} (hb₂ : b₂ ∈ G.bases s) :
-    b₁.card = b₂.card := by
-  by_contra'
-  rw [← lt_or_lt_iff_ne] at this
-  apply this.elim <;> intro h <;> clear hb₂ <;> clear this
-  . sorry
-  . sorry
+    b₁.card = b₂.card := sorry
 
 theorem basis_of_full_unique (hG : G.full) : ∃! b, b ∈ G.base := by
   exists univ
   sorry
+
+theorem bases_of_full_card (hG : G.full) : G.base.card = 1 := by
+  let ⟨_, _⟩ := (Finset.singleton_iff_unique_mem _).mpr (basis_of_full_unique hG)
+  simp_all
 
 -- TODO: Move to Rank.lean
 
@@ -501,9 +510,12 @@ theorem rank_of_feasible (hs : s ∈ₛ G) : G.rank s = s.card := sorry
 theorem rank_of_infeasible (hs : s ∉ₛ G) : G.rank s < s.card := sorry
 
 theorem rank_eq_card_iff_feasible : G.rank s = s.card ↔ s ∈ₛ G := by
-  constructor <;> intro h
-  . sorry
-  . exact rank_of_feasible h
+  apply Iff.intro _ (fun h => rank_of_feasible h)
+  intro h
+  have := mt (@rank_of_infeasible _ _ _ G s)
+  simp at this
+  apply this
+  simp only [h, le_refl]
 
 end rank
 
