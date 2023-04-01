@@ -3,6 +3,7 @@ import Mathlib.Data.List.TFAE
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
+import Mathlib.Data.Fintype.Powerset
 import Mathlib.Data.Fintype.List
 import Mathlib.Tactic.TFAE
 import Mathlib.Tactic.WLOG
@@ -16,6 +17,9 @@ def exchange_axiom {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
   {s₂ : Finset α} → (hs₂ : s₂ ∈ Sys) →
   (hs : s₁.card > s₂.card) →
     ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys
+
+instance {α : Type _} [Fintype α] [DecidableEq α] : DecidablePred (@exchange_axiom α _) :=
+  fun Sys => sorry
 
 /-- Accessible sets are defined as an associated set system of hereditary language;
     here we only pick its properties. -/
@@ -162,6 +166,19 @@ def greedoidLanguageAxiom {α : Type _} (Lang : Finset (List α)) :=
   ({w₁ : List α} → w₁ ∈ Lang → {w₂ : List α} → w₂ ∈ Lang →
     w₁.length > w₂.length → ∃ x ∈ w₁, x :: w₂ ∈ Lang)
 
+instance {α : Type _} [Fintype α] [DecidableEq α] :
+    DecidablePred (@greedoidLanguageAxiom α) := sorry
+
+protected theorem GreedoidLanguage.eq_of_veq {α : Type _} [Fintype α] :
+    ∀ {L₁ L₂ : GreedoidLanguage α}, L₁.language = L₂.language → L₁ = L₂
+  | ⟨l₁, _, _, _, _⟩, ⟨l₂, _, _, _, _⟩, h => by cases h; rfl
+
+instance {α : Type _} [Fintype α] [DecidableEq α] :
+    DecidableEq (GreedoidLanguage α) := fun L₁ L₂ =>
+  if h : L₁.language = L₂.language
+  then isTrue (GreedoidLanguage.eq_of_veq h)
+  else isFalse (fun h' => h (by simp only [h']))
+
 theorem greedoidLanguageAxiom_greedoidLangauge {α : Type _} [Fintype α] {L : GreedoidLanguage α} :
     greedoidLanguageAxiom L.language :=
   ⟨L.simple, L.contains_empty, L.contains_prefix, L.exchange_axiom⟩
@@ -178,6 +195,24 @@ structure GreedoidSystem (α : Type _) [Fintype α] [DecidableEq α] where
 /-- List of axioms in `GreedoidSystem` -/
 def greedoidSystemAxiom {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
   ∅ ∈ Sys ∧ exchange_axiom Sys
+
+instance {α : Type _} [Fintype α] [DecidableEq α] :
+    DecidablePred (@greedoidSystemAxiom α _) := fun Sys =>
+  if h₁ : ∅ ∈ Sys
+  then if h₂ : exchange_axiom Sys
+    then sorry
+    else sorry
+  else isFalse (fun h => h₁ h.1)
+
+protected theorem GreedoidSystem.eq_of_veq {α : Type _} [Fintype α] [DecidableEq α] :
+    ∀ {S₁ S₂ : GreedoidSystem α}, S₁.feasible_set = S₂.feasible_set → S₁ = S₂
+  | ⟨s₁, _, _⟩, ⟨s₂, _, _⟩, h => by cases h; rfl
+
+instance {α : Type _} [Fintype α] [DecidableEq α] :
+    DecidableEq (GreedoidSystem α) := fun S₁ S₂ =>
+  if h : S₁.feasible_set = S₂.feasible_set
+  then isTrue (GreedoidSystem.eq_of_veq h)
+  else isFalse (fun h' => h (by simp only [h']))
 
 theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [DecidableEq α]
   {S : GreedoidSystem α} :
@@ -301,6 +336,14 @@ protected def Greedoid.relatedLanguageSystem {α : Type _} [Fintype α] [Decidab
   (L : GreedoidLanguage α) (S : GreedoidSystem α) : Prop :=
   S.feasible_set = L.fromLanguageToSystem ∧ L.language = S.fromSystemToLanguage
 
+protected theorem Greedoid.relatedLanguageSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
+  {L₁ L₂ : GreedoidLanguage α} {S₁ S₂ : GreedoidSystem α}
+  (h₁ : Greedoid.relatedLanguageSystem L₁ S₁)
+  (h₂ : Greedoid.relatedLanguageSystem L₂ S₂) :
+    L₁ = L₂ ↔ S₁ = S₂ :=
+  ⟨fun h => let ⟨h₁, _⟩ := h₁; let ⟨h₂, _⟩ := h₂; GreedoidSystem.eq_of_veq (h₂ ▸ h ▸ h₁),
+   fun h => let ⟨_, h₁⟩ := h₁; let ⟨_, h₂⟩ := h₂; GreedoidLanguage.eq_of_veq (h₂ ▸ h ▸ h₁)⟩
+
 /-- Merging of language and system version of greedoid.
     This will (potentially) help `Greedoid` cover theorems written in
     both language and systems. -/
@@ -335,6 +378,34 @@ namespace Greedoid
 open List Finset Multiset
 
 variable {α : Type _} [Fintype α] [DecidableEq α] {G : Greedoid α}
+
+theorem eq_of_veq : ∀ {G₁ G₂ : Greedoid α},
+  G₁.language = G₂.language → G₁.system = G₂.system → G₁ = G₂
+  | ⟨l₁, s₁, _⟩, ⟨l₂, s₂, _⟩, h₁, h₂ => by cases h₁; cases h₂; rfl
+
+theorem eq_of_leq : ∀ {G₁ G₂ : Greedoid α}, G₁.language = G₂.language → G₁ = G₂ := by
+  intro G₁ G₂ hl
+  apply eq_of_veq hl
+  rw [← Greedoid.relatedLanguageSystem_eq G₁.related G₂.related]
+  exact hl
+
+theorem eq_of_seq : ∀ {G₁ G₂ : Greedoid α}, G₁.system = G₂.system → G₁ = G₂ := by
+  intro G₁ G₂ hs
+  apply eq_of_veq _ hs
+  rw [Greedoid.relatedLanguageSystem_eq G₁.related G₂.related]
+  exact hs
+
+instance : DecidableEq (Greedoid α) := fun G₁ G₂ =>
+  if h : G₁.language = G₂.language ∨ G₁.system = G₂.system
+  then isTrue (h.elim
+    (fun h => eq_of_veq h ((Greedoid.relatedLanguageSystem_eq G₁.related G₂.related).mp h))
+    (fun h => eq_of_veq ((Greedoid.relatedLanguageSystem_eq G₁.related G₂.related).mpr h) h))
+  else isFalse (fun h' => h (Or.inl (h' ▸ rfl)))
+
+instance : Fintype (Greedoid α) where
+  elems := (@Finset.filter (Finset (Finset α)) (fun Sys => greedoidSystemAxiom Sys) sorry
+    (@Finset.univ (Finset (Finset α)) _)).image sorry
+  complete := sorry
 
 section Membership
 
@@ -535,7 +606,6 @@ theorem rank_le_card : G.rank s ≤ s.card := sorry
 
 theorem subset_then_rank_le (hs : s ⊆ t) : G.rank s ≤ G.rank t := sorry
 
-@[simp]
 theorem local_submodularity
   (h₁ : G.rank s = G.rank (s ∪ {x}))
   (h₂ : G.rank s = G.rank (s ∪ {y})) :
@@ -572,6 +642,18 @@ theorem rank_eq_card_iff_feasible : G.rank s = s.card ↔ s ∈ₛ G := by
   simp only [h, le_refl]
 
 theorem ssubset_of_feasible_rank (hs : s ∈ₛ G) (h : t ⊂ s) : G.rank t < G.rank s := sorry
+
+/-- List of axioms for rank of greedoid. -/
+def greedoidRankAxioms (r : Finset α → ℕ) :=
+  (r ∅ = 0) ∧ (∀ s, r s ≤ s.card) ∧ (∀ s t, s ⊆ t → r s ≤ r t) ∧
+  (∀ s x y, r s = r (s ∪ {x}) → r s = r (s ∪ {y}) → r s = r (s ∪ {x, y}))
+
+theorem greedoidRankAxioms_unique_greedoid {r : Finset α → ℕ} (hr : greedoidRankAxioms r) :
+    ∃! G : Greedoid α, G.rank = r := sorry
+
+/-- Rank function satisfying `greedoidRankAxioms` generates a unique greedoid. -/
+protected def rank.toGreedoid (r : Finset α → ℕ) (hr : greedoidRankAxioms r) : Greedoid α :=
+  Fintype.choose (fun G => G.rank = r) (greedoidRankAxioms_unique_greedoid hr)
 
 end rank
 
@@ -673,7 +755,9 @@ end Greedoid
 
 -- TODO: Move to Matroid.Basic.lean
 
+/-- A Matroid. -/
 structure Matroid (α : Type _) [Fintype α] [DecidableEq α] extends Greedoid α where
+  /-- Matroid is a greedoid without lower bound. -/
   wo_lower_bound :
     {A : Finset α} → A ∈ system.feasible_set →
     {B : Finset α} → B ∈ system.feasible_set → A ⊆ B →
@@ -688,10 +772,10 @@ variable {α : Type _} [Fintype α] [DecidableEq α]
 theorem has_no_lower_bound {M : Matroid α} : M.interval_property_wo_lower_bound := M.wo_lower_bound
 
 /-- `s ∈ₛ M` if `s` is feasible. -/
-def Matroid.finsetMem (s : Finset α) (M : Matroid α) := s ∈ M.system.feasible_set
+def finsetMem (s : Finset α) (M : Matroid α) := s ∈ M.system.feasible_set
 
 /-- `w ∈ₗ M` if `w` is in the language. -/
-def Matroid.wordMem (w : List α) (M : Matroid α) := w ∈ M.language.language
+def wordMem (w : List α) (M : Matroid α) := w ∈ M.language.language
 
 @[inherit_doc] infix:50 " ∈ₛ " => Matroid.finsetMem
 /-- Negated version of `∉ₛ` -/
@@ -711,13 +795,17 @@ section IndependentSet
 
 variable {M : Matroid α} (Sys : Finset (Finset α))
 
+/-- The first independent axiom for matroid. -/
 def I₁ := ∅ ∈ Sys
 
+/-- The second independent axiom for matroid. -/
 def I₂ := {s : Finset α} → s ∈ Sys → {t : Finset α} → t ⊆ s → t ∈ Sys
 
+/-- The third independent axiom for matroid. -/
 def I₃ := {s : Finset α} → s ∈ Sys → {t : Finset α} → t ∈ Sys →
-  s.card = t.card + 1 → ∃ x ∈ s \ t, t ∪ {x} ∈ Sys
+  t.card < s.card → ∃ x ∈ s \ t, t ∪ {x} ∈ Sys
 
+/-- A list of independence axioms for matroid. -/
 def matroidIndependenceAxiom := I₁ Sys ∧ I₂ Sys ∧ I₃ Sys
 
 theorem matroid_I₁ : I₁ M.system.feasible_set := by simp only [I₁, M.system.contains_empty]
@@ -733,7 +821,16 @@ theorem matroid_I₂ : I₂ M.system.feasible_set := by
     let ⟨x, hx⟩ := t_nonempty
     sorry
 
-theorem matroid_I₃ : I₃ M.system.feasible_set := sorry
+theorem matroid_I₃ : I₃ M.system.feasible_set := by
+  intro s hs t ht h
+  simp_all
+  let ⟨a, ha₁, ha₂⟩ := M.system.exchange_axiom hs ht h
+  simp at ha₁
+  exists a
+
+/-- A set system satisfying `matroidIndependenceAxiom` generates a unique matroid. -/
+def toMatroid (Sys : Finset (Finset α)) (hSys : matroidIndependenceAxiom Sys) :
+    Matroid α := ⟨sorry, sorry⟩
 
 end IndependentSet
 
@@ -741,7 +838,9 @@ end Matroid
 
 -- TODO: Move to Antimatroid.Basic.lean
 
+/-- The Antimatroid. -/
 structure Antimatroid (α : Type _) [Fintype α] [DecidableEq α] extends Greedoid α where
+  /-- Antimatroids are greedoids without upper bound. -/
   wo_upper_bound :
     {A : Finset α} → A ∈ system.feasible_set →
     {B : Finset α} → B ∈ system.feasible_set → B ⊆ A →
