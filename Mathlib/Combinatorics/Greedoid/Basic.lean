@@ -5,6 +5,7 @@ import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.List
 import Mathlib.Tactic.TFAE
+import Mathlib.Tactic.WLOG
 
 /-  Note: We distinguish `w` as a `Word` from `l` as a `List`, but use the same type
     as there are so many functionalities given with `List`. -/
@@ -243,7 +244,53 @@ protected def GreedoidSystem.fromSystemToLanguage {α : Type _} [Fintype α] [De
 
 theorem greedoidLanguageAxiom_fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
   {S : GreedoidSystem α} :
-    greedoidLanguageAxiom S.fromSystemToLanguage := sorry
+    greedoidLanguageAxiom S.fromSystemToLanguage := ⟨fun _ hw => by
+  simp [GreedoidSystem.fromSystemToLanguage] at hw
+  let ⟨⟨a, _, ha⟩, _⟩ := hw; clear hw
+  rw [← Multiset.coe_nodup]
+  exact ha ▸ a.nodup, by
+  simp [GreedoidSystem.fromSystemToLanguage, S.contains_empty], fun w₁ w₂ hw => by
+  simp [GreedoidSystem.fromSystemToLanguage] at *
+  let ⟨⟨a, _, ha⟩, h⟩ := hw; clear hw
+  have : (Multiset.ofList _).Nodup := ha ▸ a.nodup
+  simp only [Multiset.coe_nodup] at this
+  constructor
+  . exists w₁.toFinset
+    constructor
+    . apply h
+      apply Or.inl ⟨[], by simp; exists w₂; simp only [List.append_nil]⟩
+    . simp
+      rw [List.dedup_eq_self.mpr]
+      exact List.Nodup.of_append_right this
+  . intro w hw
+    apply h _
+    by_cases (w = w₁)
+    . exact Or.inl ⟨[], by simp [h, List.nil_suffix]⟩
+    . apply Or.inr
+      cases w₁
+      . simp_all
+      . rw [List.suffix_cons_iff] at hw
+        simp; apply hw.elim <;> tauto, by
+  intro w₁ hw₁ w₂ hw₂ hw
+  simp [GreedoidSystem.fromSystemToLanguage] at hw₁ hw₂
+  simp [GreedoidSystem.fromSystemToLanguage]
+  have w₁_nodup : w₁.Nodup := by
+    let ⟨a, _, ha⟩ := hw₁.1; rw [← Multiset.coe_nodup]; exact ha ▸ a.nodup
+  have w₂_nodup : w₂.Nodup := by
+    let ⟨a, _, ha⟩ := hw₂.1; rw [← Multiset.coe_nodup]; exact ha ▸ a.nodup
+  let ⟨x, hx⟩ := @GreedoidSystem.exchange_axiom α _ _ S w₁.toFinset (hw₁.2 w₁ w₁.suffix_refl)
+    w₂.toFinset (hw₂.2 w₂ w₂.suffix_refl) (by
+      simp [List.toFinset_card_of_nodup, w₁_nodup, w₂_nodup, hw])
+  exists x
+  simp at hx; simp [hx]
+  have h₁ : insert x w₂.toFinset = w₂.toFinset ∪ {x} := by
+    ext a; constructor <;> intro h <;> simp at * <;> tauto
+  constructor
+  . exists (x :: w₂).toFinset; simp
+    simp [hx, List.dedup_eq_self.mpr w₂_nodup, h₁]
+    simp [insert, List.insert, hx.1.2]
+  . simp [h₁, hx.2]
+    exact hw₂.2⟩
 
 /-- `relatedLanguageSystem` checks if a given language and system are related to each other.
     That is, given that the language is hereditary,
@@ -675,57 +722,16 @@ def matroidIndependenceAxiom := I₁ Sys ∧ I₂ Sys ∧ I₃ Sys
 
 theorem matroid_I₁ : I₁ M.system.feasible_set := by simp only [I₁, M.system.contains_empty]
 
-theorem matroid_I₂Aux {s : Finset α} {a : α} (ha : a ∉ s) (hs : s ∪ {a} ∈ M) : s ∈ M := by
-  induction' s using Finset.induction_on with x s hx ih generalizing a
-  . exact matroid_I₁
-  . simp [not_or] at ha
-    let ⟨ha₁, ha₂⟩ := ha; clear ha; clear ha
-    have : insert x s = s ∪ {x} := by ext y; constructor <;> intro h <;> simp at * <;> tauto
-    rw [this]
-    sorry
-
-
 theorem matroid_I₂ : I₂ M.system.feasible_set := by
   intro s hs t ht
-  induction' t using Finset.induction_on with a t ha ih
-  . exact M.system.contains_empty
-  . simp [ha]
-    have : t ∪ {a} ∈ M := by
-      apply @Matroid.wo_lower_bound α _ _ M t _ (s \ {a}) _ _ a (by simp)
-      . simp
-        have : s ∪ {a} = s := by
-          ext x
-          apply Iff.intro _ (fun h => by simp; exact Or.inl h)
-          intro h
-          simp at h
-          apply h.elim <;> intro h <;> simp_all
-          apply ht
-          simp
-        rw [this]
-        exact hs
-      . eapply ih
-        intro x hx
-        apply ht
-        simp [hx]
-      . apply @matroid_I₂Aux _ _ _ M (s \ {a}) a (by simp)
-        simp_all
-        have : s ∪ {a} = s := by
-          ext x
-          apply Iff.intro _ (fun h => by simp; exact Or.inl h)
-          intro h
-          simp at h
-          apply h.elim <;> intro h <;> simp_all
-          apply ht
-          simp
-        rw [this]
-        exact hs
-      . intro x hx
-        simp
-        constructor
-        . apply ht; simp; exact Or.inr hx
-        . intro hx'; simp_all
-    have ht : t ∪ {a} = insert a t := by ext x; constructor <;> intro h <;> simp at * <;> tauto
-    simp only [← ht, this]
+  by_contra' h
+  wlog hMinimal : ∀ t', t' ⊆ s → t' ∉ M → t.card ≤ t'.card generalizing s t
+  . simp_all
+    sorry
+  . have t_nonempty : t.Nonempty := by
+      apply Finset.nonempty_of_ne_empty; intro h'; apply h; rw [h']; exact M.system.contains_empty
+    let ⟨x, hx⟩ := t_nonempty
+    sorry
 
 theorem matroid_I₃ : I₃ M.system.feasible_set := sorry
 
