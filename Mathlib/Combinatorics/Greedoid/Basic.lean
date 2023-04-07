@@ -18,9 +18,6 @@ def exchange_axiom {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
   (hs : s₁.card > s₂.card) →
     ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys
 
-instance {α : Type _} [Fintype α] [DecidableEq α] : DecidablePred (@exchange_axiom α _) :=
-  fun Sys => sorry
-
 /-- Accessible sets are defined as an associated set system of hereditary language;
     here we only pick its properties. -/
 def accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
@@ -195,14 +192,6 @@ structure GreedoidSystem (α : Type _) [Fintype α] [DecidableEq α] where
 /-- List of axioms in `GreedoidSystem` -/
 def greedoidSystemAxiom {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
   ∅ ∈ Sys ∧ exchange_axiom Sys
-
-instance {α : Type _} [Fintype α] [DecidableEq α] :
-    DecidablePred (@greedoidSystemAxiom α _) := fun Sys =>
-  if h₁ : ∅ ∈ Sys
-  then if h₂ : exchange_axiom Sys
-    then sorry
-    else sorry
-  else isFalse (fun h => h₁ h.1)
 
 protected theorem GreedoidSystem.eq_of_veq {α : Type _} [Fintype α] [DecidableEq α] :
     ∀ {S₁ S₂ : GreedoidSystem α}, S₁.feasible_set = S₂.feasible_set → S₁ = S₂
@@ -882,12 +871,28 @@ theorem matroid_I₃ : I₃ M.system.feasible_set := by
   simp at ha₁
   exists a
 
+theorem matroid_matroidIndependenceAxiom {M : Matroid α} :
+  matroidIndependenceAxiom M.system.feasible_set := ⟨matroid_I₁, matroid_I₂, matroid_I₃⟩
+
 /-- A set system satisfying `matroidIndependenceAxiom` generates a unique matroid. -/
-def toMatroid (Sys : Finset (Finset α)) (hSys : matroidIndependenceAxiom Sys) :
+protected def Matroid.ofSetSystem (Sys : Finset (Finset α)) (hSys : matroidIndependenceAxiom Sys) :
     Matroid α :=
-  let Sys : GreedoidSystem α := sorry
-  ⟨⟨Sys.fromSystemToLanguage, Sys, ⟨by rw [fromSystemToLanguage_fromLanguageToSystem_eq], rfl⟩⟩,
-    fun {s₁} hs₁ {s₂} hs₂ hs {x} hx₁ hx₂ => sorry⟩
+  let Sys' : GreedoidSystem α := ⟨Sys, hSys.1, fun {s₁} hs₁ {s₂} hs₂ hs => hSys.2.2 hs₁ hs₂ hs⟩
+  ⟨⟨Sys'.fromSystemToLanguage, Sys', by rw [fromSystemToLanguage_fromLanguageToSystem_eq], rfl⟩,
+    fun {s₁} hs₁ {s₂} hs₂ hs {x} hx₁ hx₂ => by
+      simp_all
+      let ⟨i₁, i₂, i₃⟩ := hSys
+      simp [I₃] at i₃
+      let ⟨y, ⟨hy₁, hy₂⟩, hy₃⟩ := @i₃ (s₂ ∪ {x}) hx₂ s₁ hs₁
+        (by simp_arith [hx₁, Finset.card_le_of_subset hs])
+      by_cases x = y
+      . rw [h]; exact hy₃
+      . simp at hy₁
+        apply hy₁.elim <;> intro h' <;> simp_all
+        simp [I₂] at i₂
+        apply i₂ hx₂
+        intro z hz; simp; simp at hz
+        tauto⟩
 end IndependentSet
 
 end Matroid
