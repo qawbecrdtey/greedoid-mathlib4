@@ -6,6 +6,8 @@ import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.Powerset
 import Mathlib.Data.Fintype.List
+import Mathlib.Data.Matrix.Basic
+import Mathlib.LinearAlgebra.LinearIndependent
 import Mathlib.Tactic.TFAE
 import Mathlib.Tactic.WLOG
 
@@ -575,7 +577,7 @@ theorem greedoid_system_accessible : accessible G.system.feasible_set := by
       simp at this
       simp [hw₂, Finset.insert_sdiff_of_mem]
       have ht := G.language.contains_prefix _ [h] hw₁
-      rw [Finset.sdiff_singleton_not_mem_eq_self]
+      rw [Finset.sdiff_singleton_eq_self]
       . rw [G.related.1]
         simp [GreedoidLanguage.fromLanguageToSystem', GreedoidLanguage.fromLanguageToSystem]
         exists t
@@ -918,7 +920,7 @@ theorem matroid_matroidIndependenceAxiom {M : Matroid α} :
   matroidIndependenceAxiom M.system.feasible_set := ⟨matroid_I₁, matroid_I₂, matroid_I₃⟩
 
 /-- A set system satisfying `matroidIndependenceAxiom` generates a unique matroid. -/
-protected def Matroid.ofSetSystem (Sys : Finset (Finset α)) (hSys : matroidIndependenceAxiom Sys) :
+def ofSetSystem (Sys : Finset (Finset α)) (hSys : matroidIndependenceAxiom Sys) :
     Matroid α :=
   let Sys' : GreedoidSystem α := ⟨Sys, hSys.1, fun {s₁} hs₁ {s₂} hs₂ hs => hSys.2.2 hs₁ hs₂ hs⟩
   ⟨⟨Sys'.fromSystemToLanguage, Sys', by rw [fromSystemToLanguage_fromLanguageToSystem_eq], rfl⟩,
@@ -939,6 +941,30 @@ protected def Matroid.ofSetSystem (Sys : Finset (Finset α)) (hSys : matroidInde
 end IndependentSet
 
 end Matroid
+
+-- TODO: Move to Matroid.LinearMatroid.lean
+
+/-- Linear Matroid is a Matroid which has ground set of column vectors
+    of some matrix over some field. -/
+structure LinearMatroid (α : Type _) [Fintype α] [DecidableEq α] extends Matroid α where
+
+namespace LinearMatroid
+
+variable {α : Type _} [Fintype α] [DecidableEq α]
+
+def ofMatrix {β F} [Fintype β] [Field F] [DecidableEq F] (A : Matrix β α F) : Matroid α :=
+  let col : α → (β → F) := fun a => (fun b => A b a)
+  Matroid.ofSetSystem
+    (@Finset.filter _
+      (fun s => LinearIndependent (β → F) (fun a : {x // x ∈ s} => col a))
+      (fun s => sorry) Finset.univ.powerset) (by
+    simp [Matroid.matroidIndependenceAxiom, Matroid.I₁, Matroid.I₂, Matroid.I₃]
+    constructor <;> try constructor
+    . sorry
+    . sorry
+    . sorry)
+
+end LinearMatroid
 
 -- TODO: Move to Antimatroid.Basic.lean
 
