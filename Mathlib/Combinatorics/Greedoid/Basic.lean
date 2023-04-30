@@ -175,7 +175,29 @@ instance {α : Type _} [Fintype α] [DecidableEq α] :
     DecidablePred (@greedoidLanguageAxiom α) := fun Lang =>
   if h₁ : ∀ w ∈ Lang, w.Nodup
   then if h₂ : [] ∈ Lang
-    then sorry
+    then if h₃ : ∀ w ∈ Lang, ∀ w' ∈ w.tails, w' ∈ Lang
+      then if h₄ : {w₁ : List α} → w₁ ∈ Lang → {w₂ : List α} → w₂ ∈ Lang → w₁.length > w₂.length →
+          ∃ x ∈ w₁, x :: w₂ ∈ Lang
+        then isTrue (by
+          simp_all [greedoidLanguageAxiom]
+          intro w₁ w₂ h
+          exact h₃ (w₂ ++ w₁) h w₁ (by simp))
+        else isFalse (by simp_all [greedoidLanguageAxiom])
+      else isFalse (by
+        simp [greedoidLanguageAxiom]
+        intro _ _ h₃'
+        simp at h₃
+        let ⟨w, hw, ⟨w', hw'₁, hw'₂⟩⟩ := h₃
+        clear h₃
+        exists w
+        simp_all
+        exists w'
+        simp [hw'₁, hw'₂]
+        apply hw'₂
+        let ⟨w'', hw''⟩ := hw'₁
+        apply h₃' _ w''
+        rw [hw'']
+        exact hw)
     else isFalse (by simp [greedoidLanguageAxiom, h₂])
   else isFalse (by simp [greedoidLanguageAxiom, h₁])
 
