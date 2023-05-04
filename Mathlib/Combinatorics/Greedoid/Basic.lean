@@ -257,7 +257,7 @@ theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [Decidable
 
     `feasible_set = {↑w | w ∈ language}` -/
 protected def GreedoidLanguage.fromLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α]
-  (L : GreedoidLanguage α) := L.language.image (fun w : List α => (w.toFinset : Finset α))
+  (L : GreedoidLanguage α) := L.language.image (fun w : List α => w.toFinset)
 
 theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α]
   {L : GreedoidLanguage α} :
@@ -402,7 +402,8 @@ theorem fromSystemToLanguage_eq {α : Type _} [Fintype α] [DecidableEq α]
 
 @[simp]
 theorem fromSystemToLanguage_fromLanguageToSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
-    {S : GreedoidSystem α} : (S.fromSystemToLanguage).fromLanguageToSystem = S := sorry
+    {S : GreedoidSystem α} : S.fromSystemToLanguage.fromLanguageToSystem = S := by
+  sorry
 
 @[simp]
 theorem fromLanguageToSystem_fromSystemToLanguage_eq {α : Type _} [Fintype α] [DecidableEq α]
@@ -488,8 +489,7 @@ instance : DecidableEq (Greedoid α) := fun G₁ G₂ =>
   else isFalse (fun h' => h (Or.inl (h' ▸ rfl)))
 
 instance : Fintype (Greedoid α) where
-  elems := (@Finset.filter (Finset (Finset α)) (fun Sys => greedoidSystemAxiom Sys) sorry
-    (@Finset.univ (Finset (Finset α)) _)).image sorry
+  elems := sorry
   complete := sorry
 
 section Membership
