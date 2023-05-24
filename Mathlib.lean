@@ -1776,6 +1776,7 @@ import Mathlib.ModelTheory.Encoding
 import Mathlib.ModelTheory.FinitelyGenerated
 import Mathlib.ModelTheory.LanguageMap
 import Mathlib.ModelTheory.Order
+import Mathlib.ModelTheory.Quotients
 import Mathlib.ModelTheory.Semantics
 import Mathlib.ModelTheory.Skolem
 import Mathlib.ModelTheory.Substructures
