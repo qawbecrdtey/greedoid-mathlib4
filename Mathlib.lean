@@ -1787,6 +1787,7 @@ import Mathlib.ModelTheory.FinitelyGenerated
 import Mathlib.ModelTheory.LanguageMap
 import Mathlib.ModelTheory.Order
 import Mathlib.ModelTheory.Quotients
+import Mathlib.ModelTheory.Satisfiability
 import Mathlib.ModelTheory.Semantics
 import Mathlib.ModelTheory.Skolem
 import Mathlib.ModelTheory.Substructures
