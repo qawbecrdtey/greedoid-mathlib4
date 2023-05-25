@@ -2006,6 +2006,7 @@ import Mathlib.RingTheory.Ideal.Quotient
 import Mathlib.RingTheory.Ideal.QuotientOperations
 import Mathlib.RingTheory.Int.Basic
 import Mathlib.RingTheory.IntegralClosure
+import Mathlib.RingTheory.IsTensorProduct
 import Mathlib.RingTheory.JacobsonIdeal
 import Mathlib.RingTheory.LaurentSeries
 import Mathlib.RingTheory.Localization.AsSubring
