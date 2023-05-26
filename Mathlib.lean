@@ -1886,6 +1886,7 @@ import Mathlib.Order.BoundedOrder
 import Mathlib.Order.Bounds.Basic
 import Mathlib.Order.Bounds.OrderIso
 import Mathlib.Order.Category.DistLatCat
+import Mathlib.Order.Category.FinPartOrd
 import Mathlib.Order.Category.FrmCat
 import Mathlib.Order.Category.LatCat
 import Mathlib.Order.Category.LinOrdCat
