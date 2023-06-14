@@ -33,6 +33,21 @@ instance {α : Type _} [DecidableEq α] :
 def accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
   ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys)
 
+theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
+  (hSys : accessible Sys) {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
+    ∃ s' ∈ Sys, s' ⊆ s ∧ s'.card + n = s.card := by
+  induction' n with n ih generalizing s
+  . exists s
+  . have ⟨s', hs'₁, hs'₂, hs'₃⟩ := ih hs₁ hs₂ sorry
+    let ⟨a, ha₁, ha₂⟩ := hSys.2 _ hs'₁ sorry
+    exists s' \ {a}
+    simp [ha₂, Finset.card_sdiff (sorry : {a} ⊆ s')]
+    apply And.intro (Finset.Subset.trans (Finset.sdiff_subset s' {a}) hs'₂)
+    rw [Nat.succ_eq_add_one, ← Nat.sub_add_comm, ← Nat.add_assoc, Nat.add_sub_cancel, hs'₃]
+    have h₁ : s'.card = s.card - n := sorry
+    have h₂ : 1 ≤ s.card - n := sorry
+    simp only [h₁, h₂]
+
 protected theorem Finset.card_induction_on {α : Type _} {p : Finset α → Prop} [DecidableEq α]
   (s : Finset α) (empty : p ∅)
     (insert : ∀ {s : Finset α},
