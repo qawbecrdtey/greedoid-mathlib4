@@ -31,7 +31,7 @@ instance {α : Type _} [DecidableEq α] :
 /-- Accessible sets are defined as an associated set system of hereditary language;
     here we only pick its properties. -/
 def accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
-  ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x : α, s \ {x} ∈ Sys)
+  ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys)
 
 protected theorem Finset.card_induction_on {α : Type _} {p : Finset α → Prop} [DecidableEq α]
   (s : Finset α) (empty : p ∅)
@@ -66,14 +66,14 @@ open List Finset
 variable {α : Type _} [Fintype α] [DecidableEq α]
 
 /-- A weak version of exchange axiom of set system version of greedoid -/
-def weak_exchange_axiom (Sys : Finset (Finset α)) :=
+def weakExchangeAxiom (Sys : Finset (Finset α)) :=
   {s₁ : Finset α} → (hs₁ : s₁ ∈ Sys) →
   {s₂ : Finset α} → (hs₂ : s₂ ∈ Sys) →
   (hs : s₁.card = s₂.card + 1) →
     ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys
 
 /-- A weaker version of exchange axiom of set system version of greedoid -/
-def weaker_exchange_axiom (Sys : Finset (Finset α)) :=
+def weakerExchangeAxiom (Sys : Finset (Finset α)) :=
   {s : Finset α} →
   {x : α} → (hx₁ : x ∉ s) → (hx₂ : s ∪ {x} ∈ Sys) →
   {y : α} → (hy₁ : y ∉ s) → (hy₂ : s ∪ {y} ∈ Sys) →
@@ -82,7 +82,7 @@ def weaker_exchange_axiom (Sys : Finset (Finset α)) :=
     s ∪ {y, z} ∈ Sys
 
 theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) :
-    TFAE [exchangeAxiom Sys, weak_exchange_axiom Sys, weaker_exchange_axiom Sys] := by
+    TFAE [exchangeAxiom Sys, weakExchangeAxiom Sys, weakerExchangeAxiom Sys] := by
   tfae_have 1 → 2
   {
     intro h _ hs₁ _ hs₂ hs
@@ -90,7 +90,12 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) 
     exact ⟨x, hx⟩
   }
   tfae_have 2 → 1
-  { sorry }
+  {
+    intro h s₁ hs₁ s₂ hs₂ hs
+    have ⟨a, ha⟩ := hSys.2 s₁ hs₁ sorry
+
+    sorry
+  }
   tfae_have 2 → 3
   {
     intro h s x hx₁ hx₂ y hy₁ hy₂ z hz hxz hxy
@@ -583,11 +588,11 @@ theorem greedoid_system_accessible : accessible G.system.feasible_set := by
         exists t
       . simp [this.1]
 
-theorem weak_exchange_axiom' : weak_exchange_axiom G.system.feasible_set := by
+theorem weakExchangeAxiom' : weakExchangeAxiom G.system.feasible_set := by
   apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 1).mp
   exact G.system.exchangeAxiom
 
-theorem weaker_exchange_axiom' : weaker_exchange_axiom G.system.feasible_set := by
+theorem weakerExchangeAxiom' : weakerExchangeAxiom G.system.feasible_set := by
   apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 2).mp
   exact G.system.exchangeAxiom
 
