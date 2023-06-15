@@ -1,3 +1,4 @@
+-- Possible requirements: import Mathlib.Computability.Language
 import Mathlib.Data.List.Basic
 import Mathlib.Data.List.TFAE
 import Mathlib.Data.List.Infix
@@ -28,11 +29,91 @@ instance {α : Type _} [DecidableEq α] :
   then isTrue (by intro s₁ hs₁ s₂ hs₂ hs; simp at h; simp; exact h hs₁ hs₂ hs)
   else isFalse (by intro h'; apply h; clear h; simp [exchangeAxiom] at h'; simp; apply h')
 
-/-- Accessible sets are defined as an associated set system of hereditary language;
+namespace Language
+
+/-- Simple language is a language that every word does not have duplicates.
+    Due to this property, we may define such a language as `Finset (List α)`,
+    as it is easier to handle.  -/
+class Simple {α : Type _} [DecidableEq α] (Lang : Finset (List α)) where
+  simple : ∀ w ∈ Lang, w.Nodup
+
+theorem simple_language_word_head_notin_tail {α : Type} [DecidableEq α] (Lang : Finset (List α))
+    [Simple Lang] {h : α} {t : List α} (ht : h :: t ∈ Lang) : h ∉ t := by
+  have := ‹Simple Lang›.simple (h :: t) ht
+  simp at this
+  exact this.1
+
+/-- Normal language contains no loops; every alphabet is in some word in the language. -/
+class Normal {α : Type _} [DecidableEq α] (Lang : Finset (List α))
+    extends Simple Lang where
+  no_loops : ∀ a : α, ∃ w ∈ Lang, a ∈ w
+
+/-- Hereditary language contains the emptyset and the prefix of every word in the language. -/
+class Hereditary {α : Type _} [DecidableEq α] (Lang : Finset (List α))
+    extends Simple Lang where
+  contains_empty : [] ∈ Lang
+  contains_prefix : ∀ w₁ w₂, w₂ ++ w₁ ∈ Lang → w₁ ∈ Lang
+
+def toAssociatedSetSystem {α : Type _} [DecidableEq α] (Lang : Finset (List α)) :=
+    Lang.image (fun w : List α ↦ w.toFinset)
+
+end Language
+
+namespace SetSystem
+
+/-- Accessible set systems are defined as an associated set system of hereditary language;
     here we only pick its properties. -/
 class Accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) where
   contains_empty : ∅ ∈ Sys
   accessible : ∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys
+
+instance {α : Type _} [DecidableEq α] (Lang : Finset (List α)) [Language.Hereditary Lang] :
+    Accessible (Language.toAssociatedSetSystem Lang) where
+  contains_empty := by
+    simp [Language.toAssociatedSetSystem, ‹Language.Hereditary Lang›.contains_empty]
+  accessible := by
+    simp [Language.toAssociatedSetSystem]
+    intro w hw₁ hw₂
+    match w with
+    | h :: w =>
+      exists h
+      simp
+      exists w
+      apply And.intro (‹Language.Hereditary Lang›.contains_prefix w [h] hw₁)
+      rw [Finset.insert_sdiff_of_mem _ (by simp)]
+      have := Language.simple_language_word_head_notin_tail _ hw₁
+      simp [this]
+
+def toHereditaryLanguage {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) [Accessible Sys] :=
+  let perm_set := Finset.biUnion (Sys.map ⟨fun s => s.val.lists, by
+    intro s
+    have : ∃ l, l ∈ s.val.lists := by
+      induction' s using Finset.induction_on with a s hs ih
+      . exists []; simp
+      . let ⟨l, hl⟩ := ih
+        exists a :: l
+        have : a ∉ l := by
+          intro h'; apply hs; clear hs
+          simp [Multiset.mem_lists_iff] at hl
+          rw [Finset.mem_def, hl]
+          simp [h']
+        simp_all
+    intro t h
+    simp at h
+    let ⟨l, hl⟩ := this
+    have hr := h ▸ hl
+    have hl := (s.val.mem_lists_iff l).mp hl
+    have hr := (t.val.mem_lists_iff l).mp hr
+    apply Finset.eq_of_veq
+    simp only [hl, hr]⟩) id
+  (perm_set.filter (fun l => ∀ l' ∈ l.tails, l'.toFinset ∈ Sys))
+
+instance {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) [Accessible Sys] :
+    Language.Hereditary (toHereditaryLanguage Sys) where
+  simple w hw := by
+    sorry
+  contains_empty := by simp [toHereditaryLanguage, ‹Accessible Sys›.contains_empty]
+  contains_prefix := sorry
 
 theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
   [Accessible Sys] {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
@@ -72,8 +153,6 @@ protected theorem Finset.card_induction_on {α : Type _} {p : Finset α → Prop
   induction' s using Finset.induction_on with a s ha ih
   . exact empty
   . exact insert ⟨s, by simp [ha], fun x hx => by simp; exact Or.inr hx, ih⟩
-
-namespace SetSystem
 
 variable {α : Type _} [Fintype α] [DecidableEq α]
 
@@ -194,7 +273,7 @@ end ExchangeAxioms
 
 /-- Language version of greedoid. -/
 structure GreedoidLanguage (α : Type _) [Fintype α] where
-  /-- `language` is a finite sequence of words. -/
+  /-- `language` is a finite sequence of simple words. -/
   language : Finset (List α)
   /-- Every words of the `language` are simple, i.e., no words contains duplicates. -/
   simple : ∀ w ∈ language, w.Nodup
