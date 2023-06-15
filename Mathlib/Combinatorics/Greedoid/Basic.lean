@@ -30,16 +30,17 @@ instance {α : Type _} [DecidableEq α] :
 
 /-- Accessible sets are defined as an associated set system of hereditary language;
     here we only pick its properties. -/
-def accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
-  ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys)
+class Accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) where
+  contains_empty : ∅ ∈ Sys
+  accessible : ∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys
 
 theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
-  (hSys : accessible Sys) {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
+  [Accessible Sys] {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
     ∃ s' ∈ Sys, s' ⊆ s ∧ s'.card + n = s.card := by
   induction' n with n ih generalizing s
   . exists s
   . have ⟨s', hs'₁, hs'₂, hs'₃⟩ := ih hs₁ hs₂ (Nat.le_trans (by simp_arith) hn)
-    let ⟨a, ha₁, ha₂⟩ := hSys.2 _ hs'₁ (by
+    let ⟨a, ha₁, ha₂⟩ := ‹Accessible Sys›.2 _ hs'₁ (by
       intro h'
       simp [h'] at hs'₃
       rw [← hs'₃] at hn
@@ -53,9 +54,9 @@ theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys
     simp only [h₁, h₂]
 
 theorem accessible_system_smaller_set {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
-  (hSys : accessible Sys) {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
+  [Accessible Sys] {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
     ∃ s' ∈ Sys, s' ⊆ s ∧ s'.card = n := by
-  have ⟨s', hs'₁, hs'₂, hs'₃⟩ := accessible_system_smaller_set_helper hSys hs₁ hs₂
+  have ⟨s', hs'₁, hs'₂, hs'₃⟩ := accessible_system_smaller_set_helper hs₁ hs₂
     (Nat.sub_le _ _ : s.card - n ≤ s.card)
   exists s'
   simp_arith [hs'₁, hs'₂]
@@ -86,7 +87,7 @@ def bases (Sys : Finset (Finset α)) (s : Finset α) : Finset (Finset α) :=
   Sys.filter (fun s' => s' ⊆ s ∧ (∀ a, a ∉ s' → a ∉ s ∨ s' ∪ {a} ∉ Sys))
 
 theorem base_bases_eq {Sys : Finset (Finset α)} :
-    base Sys = bases Sys (@Finset.univ α _) := by ext s; simp [bases, base]
+    base Sys = bases Sys Finset.univ := by ext s; simp [bases, base]
 
 end SetSystem
 
@@ -112,7 +113,7 @@ def weakerExchangeAxiom (Sys : Finset (Finset α)) :=
   (hxz : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
     s ∪ {y, z} ∈ Sys
 
-theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) :
+theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
     TFAE [exchangeAxiom Sys, weakExchangeAxiom Sys, weakerExchangeAxiom Sys] := by
   tfae_have 1 → 2
   {
@@ -123,7 +124,7 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) 
   tfae_have 2 → 1
   {
     intro h s₁ hs₁ s₂ hs₂ hs
-    have ⟨a, ha₁, ha₂, ha₃⟩ := accessible_system_smaller_set hSys
+    have ⟨a, ha₁, ha₂, ha₃⟩ := accessible_system_smaller_set
       (fun h' => (Nat.not_eq_zero_of_lt hs) (Finset.card_eq_zero.mpr h')) hs₁
       (by simp_arith at hs; exact hs : s₂.card < s₁.card)
     have ⟨x, hx₁, hx₂⟩ := h ha₁ hs₂ ha₃
@@ -159,33 +160,35 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) 
   { sorry }
   tfae_finish
 
+/-- Add to `exchange_axioms_TFAE`? -/
 theorem exchange_property_bases_card_iff {Sys : Finset (Finset α)} :
     exchangeAxiom Sys ↔ (∀ a : Finset α,
       ∀ b₁ ∈ SetSystem.bases Sys a, ∀ b₂ ∈ SetSystem.bases Sys a,
       b₁.card = b₂.card) := by
-  simp [exchangeAxiom, SetSystem.bases]
   constructor <;> intro h
-  . intro a b₁ hb₁₁ hb₁₂ hb₁₃ b₂ hb₂₁ hb₂₂ hb₂₃
+  . intro a b₁ hb₁ b₂ hb₂
     by_contra' h'
-    by_cases h'' : (b₁.card < b₂.card)
-    . let ⟨x, ⟨hx₁, hx₂⟩, hx₃⟩ := h hb₂₁ hb₁₁ h''
-      apply (hb₁₃ x hx₂).elim <;> intro h'''
-      . exact h''' (hb₂₂ hx₁)
-      . exact h''' hx₃
-    . have h'' : b₂.card < b₁.card := by
-        apply (Nat.eq_or_lt_of_not_lt h'').elim <;> intro <;> try trivial
-      let ⟨x, ⟨hx₁, hx₂⟩, hx₃⟩ := h hb₁₁ hb₂₁ h''
-      apply (hb₂₃ x hx₂).elim <;> intro h'''
-      . exact h''' (hb₁₂ hx₁)
-      . exact h''' hx₃
+    apply (lt_or_gt_of_ne h').elim <;> intro h' <;> simp [SetSystem.bases] at hb₁ hb₂
+    . let ⟨x, hx₁, hx₂⟩ := h hb₂.1 hb₁.1 h'
+      simp at hx₁
+      exact (hb₁.2.2 x (fun h => hx₁.2 h)).elim (fun h => h (hb₂.2.1 hx₁.1)) (fun h => h hx₂)
+    . let ⟨x, hx₁, hx₂⟩ := h hb₁.1 hb₂.1 h'
+      simp at hx₁
+      exact (hb₂.2.2 x (fun h => hx₁.2 h)).elim (fun h => h (hb₁.2.1 hx₁.1)) (fun h => h hx₂)
   . intro s₁ hs₁ s₂ hs₂ hs
     by_contra' h'
-    have := h (s₁ ∪ s₂) s₂ hs₂ (fun x hx => by simp [hx]) (fun a ha => by
-      by_cases (a ∈ s₁ ∪ s₂)
-      . simp [ha] at h
-        exact Or.inr (h' _ ⟨h, ha⟩)
-      . exact Or.inl h)
-    sorry
+    have hs₂' : s₂ ∈ SetSystem.bases Sys (s₁ ∪ s₂) := by
+      simp [SetSystem.bases, hs₂, Finset.subset_union_right]
+      intro a ha
+      exact (em (a ∈ s₁)).elim
+        (fun h => Or.inr (h' a (by simp [ha, h])))
+        (fun h => Or.inl (by simp [ha, h]))
+    have ⟨b, hb₁, hb₂⟩: ∃ b ∈ SetSystem.bases Sys (s₁ ∪ s₂), s₁ ⊆ b := by sorry
+    have := h _ _ hs₂' _ hb₁
+    rw [this] at hs
+    have := Finset.eq_of_subset_of_card_le hb₂
+      (by simp at hs; simp [hs, Nat.le_of_lt] : b.card ≤ s₁.card)
+    simp [← this] at hs
 
 end ExchangeAxioms
 
@@ -324,6 +327,10 @@ theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [De
 theorem fromLanguageToSystem'_eq {α : Type _} [Fintype α] [DecidableEq α]
   {L₁ L₂ : GreedoidLanguage α} (hL : L₁.fromLanguageToSystem' = L₂.fromLanguageToSystem') :
     L₁ = L₂ := by
+  let ⟨l₁, hl₁₁, hl₁₂, hl₁₃, hl₁₄⟩ := L₁
+  let ⟨l₂, hl₂₁, hl₂₂, hl₂₃, hl₂₄⟩ := L₂
+  simp_all [GreedoidLanguage.fromLanguageToSystem']
+
   sorry
 
 /-- Converts language to system. -/
@@ -345,7 +352,7 @@ theorem fromLanguageToSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
     `language = {w | underlying set of every prefix of w is feasible}` -/
 protected def GreedoidSystem.fromSystemToLanguage' {α : Type _} [Fintype α] [DecidableEq α]
   (S : GreedoidSystem α) : Finset (List α) :=
-  let perm_set := Finset.bunionᵢ (S.feasible_set.map ⟨fun s => s.val.lists, by
+  let perm_set := Finset.biUnion (S.feasible_set.map ⟨fun s => s.val.lists, by
     intro s
     have : ∃ l, l ∈ s.val.lists := by
       induction' s using Finset.induction_on with a s hs ih
@@ -382,12 +389,10 @@ theorem greedoidLanguageAxiom_fromSystemToLanguage' {α : Type _} [Fintype α] [
   simp only [Multiset.coe_nodup] at this
   constructor
   . exists w₁.toFinset
-    constructor
-    . apply h
-      apply Or.inl ⟨[], by simp; exists w₂; simp only [List.append_nil]⟩
-    . simp
-      rw [List.dedup_eq_self.mpr]
-      exact List.Nodup.of_append_right this
+    apply And.intro (h _ (Or.inl ⟨[], by simp; exists w₂; simp only [List.append_nil]⟩)) _
+    simp
+    rw [List.dedup_eq_self.mpr]
+    exact List.Nodup.of_append_right this
   . intro w hw
     apply h _
     by_cases (w = w₁)
@@ -398,8 +403,7 @@ theorem greedoidLanguageAxiom_fromSystemToLanguage' {α : Type _} [Fintype α] [
       . rw [List.suffix_cons_iff] at hw
         simp; apply hw.elim <;> tauto, by
   intro w₁ hw₁ w₂ hw₂ hw
-  simp [GreedoidSystem.fromSystemToLanguage'] at hw₁ hw₂
-  simp [GreedoidSystem.fromSystemToLanguage']
+  simp [GreedoidSystem.fromSystemToLanguage'] at *
   have w₁_nodup : w₁.Nodup := by
     let ⟨a, _, ha⟩ := hw₁.1; rw [← Multiset.coe_nodup]; exact ha ▸ a.nodup
   have w₂_nodup : w₂.Nodup := by
@@ -600,33 +604,34 @@ theorem finset_feasible_exists_feasible_ssubset {s : Finset α}
 
 end Membership
 
-theorem greedoid_system_accessible : accessible G.system.feasible_set := by
-  simp [accessible, G.system.contains_empty]
-  intro s hs₁ hs₂
-  induction s using Finset.induction_on
-  . simp at hs₂
-  . clear hs₂
-    let ⟨w, hw₁, hw₂⟩ := finset_feasible_exists_word hs₁
-    cases w
-    case nil => simp_all
-    case cons h t =>
-      exists h
-      have := wordMem_nodup hw₁
-      simp at this
-      simp [hw₂, Finset.insert_sdiff_of_mem]
-      have ht := G.language.contains_prefix _ [h] hw₁
-      rw [Finset.sdiff_singleton_eq_self]
-      . rw [G.related.1]
-        simp [GreedoidLanguage.fromLanguageToSystem', GreedoidLanguage.fromLanguageToSystem]
-        exists t
-      . simp [this.1]
+instance : Accessible G.system.feasible_set where
+  contains_empty := G.system.contains_empty
+  accessible := by
+    intro s hs₁ hs₂
+    induction s using Finset.induction_on
+    . simp at hs₂
+    . clear hs₂
+      let ⟨w, hw₁, hw₂⟩ := finset_feasible_exists_word hs₁
+      cases w
+      case nil => simp_all
+      case cons h t =>
+        exists h
+        have := wordMem_nodup hw₁
+        simp at this
+        simp [hw₂, Finset.insert_sdiff_of_mem]
+        have ht := G.language.contains_prefix _ [h] hw₁
+        rw [Finset.sdiff_singleton_eq_self]
+        . rw [G.related.1]
+          simp [GreedoidLanguage.fromLanguageToSystem', GreedoidLanguage.fromLanguageToSystem]
+          exists t
+        . simp [this.1]
 
 theorem weakExchangeAxiom' : weakExchangeAxiom G.system.feasible_set := by
-  apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 1).mp
+  apply (exchange_axioms_TFAE.out 0 1).mp
   exact G.system.exchangeAxiom
 
 theorem weakerExchangeAxiom' : weakerExchangeAxiom G.system.feasible_set := by
-  apply ((exchange_axioms_TFAE greedoid_system_accessible).out 0 2).mp
+  apply (exchange_axioms_TFAE.out 0 2).mp
   exact G.system.exchangeAxiom
 
 /-- Greedoid is full if the ground set is feasible. -/
