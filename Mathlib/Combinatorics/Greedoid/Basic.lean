@@ -110,10 +110,32 @@ def toHereditaryLanguage {α : Type _} [DecidableEq α] (Sys : Finset (Finset α
 
 instance {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) [Accessible Sys] :
     Language.Hereditary (toHereditaryLanguage Sys) where
-  simple w hw := by
-    sorry
+  simple _ hw := by
+    simp [toHereditaryLanguage] at hw
+    let ⟨⟨a, _⟩, _⟩ := hw
+    have : a.val.Nodup := a.nodup
+    simp_all
   contains_empty := by simp [toHereditaryLanguage, ‹Accessible Sys›.contains_empty]
-  contains_prefix := sorry
+  contains_prefix w₁ w₂ hw := by
+    simp [toHereditaryLanguage] at *
+    let ⟨⟨a, _, ha⟩, h⟩ := hw; clear hw
+    have : (Multiset.ofList _).Nodup := ha ▸ a.nodup
+    simp only [Multiset.coe_nodup] at this
+    constructor
+    . exists w₁.toFinset
+      apply And.intro (h _ (Or.inl ⟨[], by simp; exists w₂; simp only [List.append_nil]⟩)) _
+      simp
+      rw [List.dedup_eq_self.mpr]
+      exact List.Nodup.of_append_right this
+    . intro w hw
+      apply h _
+      by_cases (w = w₁)
+      . exact Or.inl ⟨[], by simp [h, List.nil_suffix]⟩
+      . apply Or.inr
+        cases w₁
+        . simp_all
+        . rw [List.suffix_cons_iff] at hw
+          simp; apply hw.elim <;> tauto
 
 theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
   [Accessible Sys] {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
@@ -172,7 +194,7 @@ end SetSystem
 
 section ExchangeAxioms
 
-open List Finset
+open List Finset Language SetSystem
 
 variable {α : Type _} [Fintype α] [DecidableEq α]
 
@@ -337,30 +359,40 @@ theorem greedoidLanguageAxiom_greedoidLangauge {α : Type _} [Fintype α] {L : G
     greedoidLanguageAxiom L.language :=
   ⟨L.simple, L.contains_empty, L.contains_prefix, L.exchangeAxiom⟩
 
+instance {α : Type _} [Fintype α] [DecidableEq α] {L : GreedoidLanguage α} :
+    Language.Hereditary L.language where
+  simple := L.simple
+  contains_empty := L.contains_empty
+  contains_prefix := L.contains_prefix
+
 /-- Set System version of greedoid. -/
 structure GreedoidSystem (α : Type _) [Fintype α] [DecidableEq α] where
   /-- `feasible_set` contains sets which are feasible. -/
   feasible_set : Finset (Finset α)
   /-- `feasible_set` contains an empty set. -/
   contains_empty : ∅ ∈ feasible_set
+  /-- `feasible_set` is accessible. -/
+  accessible : ∀ s ∈ feasible_set, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ feasible_set
   /-- Exchange Axiom -/
   exchangeAxiom : exchangeAxiom feasible_set
 
 /-- List of axioms in `GreedoidSystem` -/
 def greedoidSystemAxiom {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) :=
-  ∅ ∈ Sys ∧ exchangeAxiom Sys
+  ∅ ∈ Sys ∧ (∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys) ∧ exchangeAxiom Sys
 
 instance {α : Type _} [DecidableEq α] :
     DecidablePred (@greedoidSystemAxiom α _) := fun Sys =>
   if h₁ : ∅ ∈ Sys
-  then if h₂ : exchangeAxiom Sys
-    then isTrue (by simp_all [greedoidSystemAxiom])
+  then if h₂ : ∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys
+    then if h₃ : exchangeAxiom Sys
+      then isTrue (by simp_all [greedoidSystemAxiom])
+      else isFalse (by simp [greedoidSystemAxiom, h₃])
     else isFalse (by simp [greedoidSystemAxiom, h₂])
   else isFalse (by simp [greedoidSystemAxiom, h₁])
 
 protected theorem GreedoidSystem.eq_of_veq {α : Type _} [Fintype α] [DecidableEq α] :
     ∀ {S₁ S₂ : GreedoidSystem α}, S₁.feasible_set = S₂.feasible_set → S₁ = S₂
-  | ⟨s₁, _, _⟩, ⟨s₂, _, _⟩, h => by cases h; rfl
+  | ⟨s₁, _, _, _⟩, ⟨s₂, _, _, _⟩, h => by cases h; rfl
 
 instance {α : Type _} [Fintype α] [DecidableEq α] :
     DecidableEq (GreedoidSystem α) := fun S₁ S₂ =>
@@ -371,7 +403,16 @@ instance {α : Type _} [Fintype α] [DecidableEq α] :
 theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [DecidableEq α]
   {S : GreedoidSystem α} :
     greedoidSystemAxiom S.feasible_set :=
-  ⟨S.contains_empty, S.exchangeAxiom⟩
+  ⟨S.contains_empty, S.accessible, S.exchangeAxiom⟩
+
+instance {α : Type _} [Fintype α] [DecidableEq α] {S : GreedoidSystem α} :
+    SetSystem.Accessible S.feasible_set where
+  contains_empty := S.contains_empty
+  accessible := S.accessible
+
+/- --------------------------------------------------------- -/
+/- TODO: use `toAssociatedSystem` and `toHereditaryLanguage` -/
+/- --------------------------------------------------------- -/
 
 /-- Checks if the converted set equals the feasible set.
 
@@ -383,6 +424,8 @@ theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [De
   {L : GreedoidLanguage α} :
     greedoidSystemAxiom L.fromLanguageToSystem' := ⟨by
   simp [GreedoidLanguage.fromLanguageToSystem', L.contains_empty], by
+    intro s hs₁ hs₂
+    sorry, by
   simp [GreedoidLanguage.fromLanguageToSystem', exchangeAxiom]
   intro w₁ hw₁ w₂ hw₂ hw
   have := L.exchangeAxiom hw₁ hw₂
@@ -417,6 +460,7 @@ protected def GreedoidLanguage.fromLanguageToSystem {α : Type _} [Fintype α] [
     (L : GreedoidLanguage α) : GreedoidSystem α :=
   ⟨L.fromLanguageToSystem',
     greedoidSystemAxiom_fromLanguageToSystem'.1,
+    sorry,
     greedoidSystemAxiom_fromLanguageToSystem'.2⟩
 
 theorem fromLanguageToSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
