@@ -38,15 +38,31 @@ theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys
     ∃ s' ∈ Sys, s' ⊆ s ∧ s'.card + n = s.card := by
   induction' n with n ih generalizing s
   . exists s
-  . have ⟨s', hs'₁, hs'₂, hs'₃⟩ := ih hs₁ hs₂ sorry
-    let ⟨a, ha₁, ha₂⟩ := hSys.2 _ hs'₁ sorry
+  . have ⟨s', hs'₁, hs'₂, hs'₃⟩ := ih hs₁ hs₂ (Nat.le_trans (by simp_arith) hn)
+    let ⟨a, ha₁, ha₂⟩ := hSys.2 _ hs'₁ (by
+      intro h'
+      simp [h'] at hs'₃
+      rw [← hs'₃] at hn
+      simp_arith at hn)
     exists s' \ {a}
-    simp [ha₂, Finset.card_sdiff (sorry : {a} ⊆ s')]
+    simp [ha₂, Finset.card_sdiff (fun x hx => by simp at hx; simp [hx, ha₁] : {a} ⊆ s')]
     apply And.intro (Finset.Subset.trans (Finset.sdiff_subset s' {a}) hs'₂)
     rw [Nat.succ_eq_add_one, ← Nat.sub_add_comm, ← Nat.add_assoc, Nat.add_sub_cancel, hs'₃]
-    have h₁ : s'.card = s.card - n := sorry
-    have h₂ : 1 ≤ s.card - n := sorry
+    have h₁ : s'.card = s.card - n := (Nat.sub_eq_of_eq_add hs'₃.symm).symm
+    have h₂ : 1 ≤ s.card - n := Nat.le_sub_of_add_le (Nat.succ_eq_one_add n ▸ hn)
     simp only [h₁, h₂]
+
+theorem accessible_system_smaller_set {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
+  (hSys : accessible Sys) {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
+    ∃ s' ∈ Sys, s' ⊆ s ∧ s'.card = n := by
+  have ⟨s', hs'₁, hs'₂, hs'₃⟩ := accessible_system_smaller_set_helper hSys hs₁ hs₂
+    (Nat.sub_le _ _ : s.card - n ≤ s.card)
+  exists s'
+  simp_arith [hs'₁, hs'₂]
+  have : n ≤ Finset.card s + Finset.card s' := Nat.le_trans hn (by simp)
+  rw [← Nat.add_sub_assoc hn, Nat.add_comm, Nat.sub_eq_iff_eq_add this] at hs'₃
+  simp_arith at hs'₃
+  exact hs'₃
 
 protected theorem Finset.card_induction_on {α : Type _} {p : Finset α → Prop} [DecidableEq α]
   (s : Finset α) (empty : p ∅)
@@ -107,9 +123,11 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} (hSys : accessible Sys) 
   tfae_have 2 → 1
   {
     intro h s₁ hs₁ s₂ hs₂ hs
-    have ⟨a, ha⟩ := hSys.2 s₁ hs₁ sorry
-
-    sorry
+    have ⟨a, ha₁, ha₂, ha₃⟩ := accessible_system_smaller_set hSys
+      (fun h' => (Nat.not_eq_zero_of_lt hs) (Finset.card_eq_zero.mpr h')) hs₁
+      (by simp_arith at hs; exact hs : s₂.card < s₁.card)
+    have ⟨x, hx₁, hx₂⟩ := h ha₁ hs₂ ha₃
+    exists x; simp_all; exact ha₂ hx₁.1
   }
   tfae_have 2 → 3
   {
