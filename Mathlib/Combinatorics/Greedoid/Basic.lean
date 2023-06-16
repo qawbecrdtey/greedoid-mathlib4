@@ -424,8 +424,24 @@ theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [De
   {L : GreedoidLanguage α} :
     greedoidSystemAxiom L.fromLanguageToSystem' := ⟨by
   simp [GreedoidLanguage.fromLanguageToSystem', L.contains_empty], by
-    intro s hs₁ hs₂
-    sorry, by
+  intro s hs₁ hs₂
+  simp [GreedoidLanguage.fromLanguageToSystem'] at hs₁
+  let ⟨a, ha₁, ha₂⟩ := hs₁
+  have a_nonempty: a ≠ [] := by rw [← ha₂] at hs₂; intro h'; apply hs₂; simp [h']
+  exists a.head a_nonempty
+  simp [← ha₂]
+  constructor
+  . match a with | h :: t => simp
+  . match a with
+    | h :: t =>
+      have : h ∉ t := by
+        have := L.simple (h :: t) ha₁
+        simp [List.Nodup] at this
+        exact this.1
+      simp [Finset.insert_sdiff_of_mem, this, GreedoidLanguage.fromLanguageToSystem']
+      have := L.contains_prefix t [h] (by simp [ha₁])
+      exists t
+    | [] => contradiction, by
   simp [GreedoidLanguage.fromLanguageToSystem', exchangeAxiom]
   intro w₁ hw₁ w₂ hw₂ hw
   have := L.exchangeAxiom hw₁ hw₂
@@ -433,24 +449,20 @@ theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [De
     List.toFinset_card_of_nodup (L.simple _ hw₂)] at hw
   let ⟨s, hs⟩ := this hw
   exists s
-  apply And.intro
+  constructor
   . apply And.intro hs.1
     have := L.simple _ hs.2
     simp at this; exact this.1
   . exists s :: w₂
     apply And.intro hs.2
     ext x
-    constructor <;> intro h
-    . simp at h
-      apply h.elim <;> intro h <;> simp [h]
-    . simp at h
-      apply h.elim <;> intro h <;> simp [h]⟩
+    constructor <;> intro h <;> simp at h <;> apply h.elim <;> intro h <;> simp [h]⟩
 
 theorem fromLanguageToSystem'_eq {α : Type _} [Fintype α] [DecidableEq α]
   {L₁ L₂ : GreedoidLanguage α} (hL : L₁.fromLanguageToSystem' = L₂.fromLanguageToSystem') :
     L₁ = L₂ := by
-  let ⟨l₁, hl₁₁, hl₁₂, hl₁₃, hl₁₄⟩ := L₁
-  let ⟨l₂, hl₂₁, hl₂₂, hl₂₃, hl₂₄⟩ := L₂
+  let ⟨Lang₁, hLang₁₁, hLang₁₂, hLang₁₃, hLang₁₄⟩ := L₁
+  let ⟨Lang₂, hLang₂₁, hLang₂₂, hLang₂₃, hLang₂₄⟩ := L₂
   simp_all [GreedoidLanguage.fromLanguageToSystem']
 
   sorry
