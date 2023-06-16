@@ -418,11 +418,33 @@ instance {α : Type _} [Fintype α] [DecidableEq α] {S : GreedoidSystem α} :
 
     `feasible_set = {↑w | w ∈ language}` -/
 protected def GreedoidLanguage.fromLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α]
-  (L : GreedoidLanguage α) := L.language.image (fun w : List α => w.toFinset)
+  (L : GreedoidLanguage α) := Language.toAssociatedSetSystem L.language
+
+instance AccessibleLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α] (L : GreedoidLanguage α) :
+    SetSystem.Accessible L.fromLanguageToSystem' where
+  contains_empty := by
+    simp [Language.toAssociatedSetSystem, GreedoidLanguage.fromLanguageToSystem', L.contains_empty]
+  accessible := by
+    simp [Language.toAssociatedSetSystem, GreedoidLanguage.fromLanguageToSystem']
+    intro w hw₁ hw₂
+    match w with
+    | [] => contradiction
+    | h :: w =>
+      exists h; simp
+      exists w
+      simp [Finset.insert_sdiff_of_mem, L.contains_prefix w [h] hw₁]
+      have := L.simple (h :: w) hw₁
+      simp at this; simp [hw₂, this]
 
 theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α]
   {L : GreedoidLanguage α} :
-    greedoidSystemAxiom L.fromLanguageToSystem' := ⟨by
+    greedoidSystemAxiom L.fromLanguageToSystem' := by
+  have : SetSystem.Accessible L.fromLanguageToSystem' := AccessibleLanguageToSystem' _
+  simp [greedoidSystemAxiom, this.1]
+  constructor <;> simp_all [this.2]
+  sorry
+/-
+  ⟨by
   simp [GreedoidLanguage.fromLanguageToSystem', L.contains_empty], by
   intro s hs₁ hs₂
   simp [GreedoidLanguage.fromLanguageToSystem'] at hs₁
@@ -457,6 +479,7 @@ theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [De
     apply And.intro hs.2
     ext x
     constructor <;> intro h <;> simp at h <;> apply h.elim <;> intro h <;> simp [h]⟩
+-/
 
 theorem fromLanguageToSystem'_eq {α : Type _} [Fintype α] [DecidableEq α]
   {L₁ L₂ : GreedoidLanguage α} (hL : L₁.fromLanguageToSystem' = L₂.fromLanguageToSystem') :
@@ -464,7 +487,6 @@ theorem fromLanguageToSystem'_eq {α : Type _} [Fintype α] [DecidableEq α]
   let ⟨Lang₁, hLang₁₁, hLang₁₂, hLang₁₃, hLang₁₄⟩ := L₁
   let ⟨Lang₂, hLang₂₁, hLang₂₂, hLang₂₃, hLang₂₄⟩ := L₂
   simp_all [GreedoidLanguage.fromLanguageToSystem']
-
   sorry
 
 /-- Converts language to system. -/
