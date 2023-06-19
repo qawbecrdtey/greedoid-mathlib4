@@ -211,9 +211,9 @@ termination_by exists_bases_containing_feasible_set Sys s a _ _ => a.card - s.ca
 decreasing_by
   simp_wf
   simp [hx₁]
-  apply Nat.sub_lt_sub_left
-  . sorry
-  . sorry
+  exact Nat.sub_lt_sub_left
+    (Finset.card_lt_card ((Finset.ssubset_iff_of_subset hs₂).mpr ⟨x, hx₂, hx₁⟩))
+    (by simp_arith)
 
 end SetSystem
 
