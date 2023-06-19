@@ -106,7 +106,7 @@ def toHereditaryLanguage {α : Type _} [DecidableEq α] (Sys : Finset (Finset α
     have hr := (t.val.mem_lists_iff l).mp hr
     apply Finset.eq_of_veq
     simp only [hl, hr]⟩) id
-  (perm_set.filter (fun l => ∀ l' ∈ l.tails, l'.toFinset ∈ Sys))
+  perm_set.filter (fun l => ∀ l' ∈ l.tails, l'.toFinset ∈ Sys)
 
 instance {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) [Accessible Sys] :
     Language.Hereditary (toHereditaryLanguage Sys) where
@@ -167,6 +167,24 @@ theorem accessible_system_smaller_set {α : Type _} [DecidableEq α] {Sys : Fins
   rw [← Nat.add_sub_assoc hn, Nat.add_comm, Nat.sub_eq_iff_eq_add this] at hs'₃
   simp_arith at hs'₃
   exact hs'₃
+
+end SetSystem
+
+theorem hereditary_language_lemma {α : Type _} [DecidableEq α] {Lang : Finset (List α)}
+  [Language.Hereditary Lang] :
+    Lang = SetSystem.toHereditaryLanguage (Language.toAssociatedSetSystem Lang) ↔
+      (∀ w₁ ∈ Lang, ∀ w₂ ∈ Lang, ∀ x ∈ (w₁.toFinset \ w₂.toFinset),
+        w₁.toFinset = w₂.toFinset ∪ {x} → x :: w₂ ∈ Lang) := by
+  constructor <;> intro h
+  . intro w₁ hw₁ w₂ hw₂ x hx₁ hx₂
+    have h₁ : w₁.toFinset ∈ Language.toAssociatedSetSystem Lang := by
+      sorry
+    have h₂ : w₂.toFinset ∈ Language.toAssociatedSetSystem Lang := by
+      sorry
+    let _ : SetSystem.Accessible (Language.toAssociatedSetSystem Lang) := sorry
+    sorry
+  . sorry
+namespace SetSystem
 
 protected theorem Finset.card_induction_on {α : Type _} {p : Finset α → Prop} [DecidableEq α]
   (s : Finset α) (empty : p ∅)
@@ -309,8 +327,7 @@ theorem exchange_property_bases_card_iff {Sys : Finset (Finset α)} :
       exact (em (a ∈ s₁)).elim
         (fun h => Or.inr (h' a (by simp [ha, h])))
         (fun h => Or.inl (by simp [ha, h]))
-    have ⟨b, hb₁, hb₂⟩: ∃ b ∈ SetSystem.bases Sys (s₁ ∪ s₂), s₁ ⊆ b := by
-      sorry
+    have ⟨b, hb₁, hb₂⟩ := exists_bases_containing_feasible_set hs₁ (Finset.subset_union_left s₁ s₂)
     have := h _ _ hs₂' _ hb₁
     rw [this] at hs
     have := Finset.eq_of_subset_of_card_le hb₂
@@ -488,8 +505,7 @@ theorem fromLanguageToSystem'_eq {α : Type _} [Fintype α] [DecidableEq α]
     L₁ = L₂ := by
   let ⟨Lang₁, hLang₁₁, hLang₁₂, hLang₁₃, hLang₁₄⟩ := L₁
   let ⟨Lang₂, hLang₂₁, hLang₂₂, hLang₂₃, hLang₂₄⟩ := L₂
-  simp_all [GreedoidLanguage.fromLanguageToSystem']
-  simp [Language.toAssociatedSetSystem] at hL
+  simp_all [GreedoidLanguage.fromLanguageToSystem', Language.toAssociatedSetSystem]
   sorry
 
 /-- Converts language to system. -/
