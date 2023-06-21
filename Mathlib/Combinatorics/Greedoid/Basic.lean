@@ -223,7 +223,7 @@ theorem exists_bases_containing_feasible_set {Sys : Finset (Finset α)} {s a : F
       simp at hy
       exact hy.elim (fun h => hs₂ h) (fun h => h ▸ hx₂) : s ∪ {x} ⊆ a)
     exists b
-    simp [hb.1]
+    simp only [hb.1, true_and]
     exact Finset.Subset.trans (Finset.subset_union_left _ _) hb.2
 termination_by exists_bases_containing_feasible_set Sys s a _ _ => a.card - s.card
 decreasing_by
