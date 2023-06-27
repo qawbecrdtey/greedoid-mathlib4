@@ -172,6 +172,42 @@ theorem accessible_system_smaller_set {α : Type _} [DecidableEq α] {Sys : Fins
 
 end SetSystem
 
+theorem hereditary_language_lemma_helper {α : Type _} [DecidableEq α] {w₁ w₂ : List α}
+  (hw₁ : w₂ <:+ w₁) (hw₂ : w₂.length < w₁.length) :
+    ∃ x, x :: w₂ <:+ w₁ := by
+  cases' w₁ with h w₁ <;> try contradiction
+  have ⟨w, hw⟩ := hw₁
+  cases' w₂ with h' w₂
+  . cases' w₁ with h' w₁
+    . exists h; exact List.suffix_rfl
+    . simp at hw
+      have ⟨x, w', hw'⟩ := hereditary_language_lemma_helper
+        (⟨h' :: w₁, by simp⟩ : [] <:+ h' :: w₁) (by simp)
+      exists x; exists h :: w'; simp only [List.cons_append, hw']
+  . simp at hw₂
+    have hw₂ := Nat.lt_of_succ_lt_succ hw₂
+    simp_arith at hw₂
+    rw [Nat.le_iff_lt_or_eq] at hw₂
+    have : w₂.length + 1 = (h' :: w₂).length := rfl
+    apply hw₂.elim <;> intro hw₂
+    . rw [this] at hw₂
+      have ⟨x, w', hw'⟩ := hereditary_language_lemma_helper ⟨w.tail, by
+        cases' w with h'' w
+        . simp at hw; simp_arith [hw.2] at hw₂
+        . simp at hw; simp [hw.2]⟩ hw₂
+      exists x; exists h :: w'; simp only [List.cons_append, hw']
+    . exists h
+      have : h' :: w₂ = w₁ := by
+        rw [this] at hw₂
+        have : h' :: w₂ <:+ w₁ := by
+          exists w.tail
+          cases' w with h'' w
+          . simp at hw; simp [hw.2] at hw₂
+          . simp at hw; simp [hw.2]
+        exact List.eq_of_suffix_of_length_eq this hw₂
+      simp only [this, List.suffix_rfl]
+termination_by hereditary_language_lemma_helper w₁ w₂ _ _ => w₁.length + w₂.length
+
 theorem hereditary_language_lemma {α : Type _} [DecidableEq α] {Lang : Finset (List α)}
   [Language.Hereditary Lang] :
     Lang = SetSystem.toHereditaryLanguage (Language.toAssociatedSetSystem Lang) ↔
@@ -214,9 +250,31 @@ theorem hereditary_language_lemma {α : Type _} [DecidableEq α] {Lang : Finset 
         simp; exact ‹Language.Hereditary Lang›.3 w' w'' (hw'' ▸ h₀)
     . simp [SetSystem.toHereditaryLanguage, Language.toAssociatedSetSystem] at h₀
       let ⟨⟨w₁, hw₁₁, hw₁₂⟩, h₁⟩ := h₀
-      have ⟨w₀, hw₀⟩ : ∃ w₀, w₀ <:+ w ∧ w₀ ∈ Lang :=
-        ⟨[], List.nil_suffix _, ‹Language.Hereditary Lang›.2⟩
-      sorry
+      have w₁_nodup := ‹Language.Hereditary Lang›.simple _ hw₁₁
+      simp [w₁_nodup, List.Nodup.dedup] at hw₁₂
+      have w_nodup := (List.Perm.nodup_iff hw₁₂).mpr w₁_nodup
+      have ⟨w₀, hw₀⟩ : ∃ w₀ ∈ Lang, w₀ <:+ w ∧ (∀ w' ∈ Lang, w' <:+ w → w'.length ≤ w₀.length) := by
+        sorry
+      have w₀_nodup : w₀.Nodup :=
+        have ⟨w', hw'⟩ := hw₀.2.1
+        (List.nodup_append.mp (hw' ▸ w_nodup : (w' ++ w₀).Nodup)).2.1
+      by_cases h₂ : w₀ = w
+      . exact h₂ ▸ hw₀.1
+      . have w₀_length := lt_iff_le_and_ne.mpr
+          ⟨List.isSuffix.length_le hw₀.2.1, by
+            contrapose h₂; simp at *; exact List.eq_of_suffix_of_length_eq hw₀.2.1 h₂⟩
+        have ⟨x, hx⟩ : ∃ x, x :: w₀ <:+ w := hereditary_language_lemma_helper hw₀.2.1 w₀_length
+        have : x ∉ w₀ := by
+          have ⟨w', hw'⟩ := hx
+          have := (List.nodup_append.mp (hw' ▸ w_nodup : (w' ++ x :: w₀).Nodup)).2.1
+          simp only [List.nodup_cons] at this
+          simp only [this]
+        have ⟨w₀', hw₀'⟩ : ∃ w₀' ∈ Lang, w₀'.toFinset = w₀.toFinset ∪ {x} := by
+          have ⟨w', hw'⟩ := h₁ _ hx
+          exists w'; simp at hw'; simp [hw', Finset.insert_eq, Finset.union_comm]
+        have := hw₀.2.2 _ (h _ hw₀'.1 _ hw₀.1 x
+          (by simp only [Finset.mem_sdiff, hw₀'.2]; simp [this]) hw₀'.2) hx
+        simp_arith at this
 
 namespace SetSystem
 
