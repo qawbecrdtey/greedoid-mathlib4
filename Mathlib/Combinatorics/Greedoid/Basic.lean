@@ -435,6 +435,14 @@ theorem greedoidLanguageAxiom_greedoidLangauge {α : Type _} [Fintype α] {L : G
     greedoidLanguageAxiom L.language :=
   ⟨L.simple, L.contains_empty, L.contains_prefix, L.exchangeAxiom⟩
 
+instance {α : Type _} [Fintype α] [DecidableEq α] : Fintype (GreedoidLanguage α) where
+  elems :=
+    let simple_lists : Finset (List α) := sorry
+    let simple_languages : Finset (Finset (List α)) :=
+      simple_lists.powerset.filter greedoidLanguageAxiom
+    simple_languages.attach.map ⟨fun Lang => ⟨Lang.val, sorry, sorry, sorry, sorry⟩, sorry⟩
+  complete := sorry
+
 instance {α : Type _} [Fintype α] [DecidableEq α] {L : GreedoidLanguage α} :
     Language.Hereditary L.language where
   simple := L.simple
@@ -480,6 +488,10 @@ theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [Decidable
   {S : GreedoidSystem α} :
     greedoidSystemAxiom S.feasible_set :=
   ⟨S.contains_empty, S.accessible, S.exchangeAxiom⟩
+
+instance {α : Type _} [Fintype α] [DecidableEq α] : Fintype (GreedoidSystem α) where
+  elems := sorry
+  complete := sorry
 
 instance {α : Type _} [Fintype α] [DecidableEq α] {S : GreedoidSystem α} :
     SetSystem.Accessible S.feasible_set where
@@ -707,7 +719,7 @@ infix:50 " ∉ₛ " => fun s G => ¬ (Greedoid.finsetMem s G)
 @[inherit_doc] infix:50 " ∈ₗ " => Greedoid.wordMem
 /-- Negated version of `∉ₗ` -/
 infix:50 " ∉ₗ " => fun w G => ¬ (Greedoid.wordMem w G)
-/-- Prefer `∈ₛ` For greedoids. -/
+/-- Prefer `∈ₛ` for greedoids. -/
 instance {α : Type _} [Fintype α] [DecidableEq α] :
   Membership (Finset α) (Greedoid α) := ⟨Greedoid.finsetMem⟩
 
