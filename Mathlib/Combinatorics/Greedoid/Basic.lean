@@ -67,7 +67,8 @@ class Accessible {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) where
   contains_empty : ∅ ∈ Sys
   accessible : ∀ s ∈ Sys, s ≠ ∅ → ∃ x ∈ s, s \ {x} ∈ Sys
 
-instance {α : Type _} [DecidableEq α] (Lang : Finset (List α)) [Language.Hereditary Lang] :
+instance toAssociatedSetSystem_Accessible {α : Type _} [DecidableEq α] (Lang : Finset (List α))
+  [Language.Hereditary Lang] :
     Accessible (Language.toAssociatedSetSystem Lang) where
   contains_empty := by
     simp [Language.toAssociatedSetSystem, ‹Language.Hereditary Lang›.contains_empty]
@@ -108,7 +109,8 @@ def toHereditaryLanguage {α : Type _} [DecidableEq α] (Sys : Finset (Finset α
     simp only [hl, hr]⟩) id
   perm_set.filter (fun l => ∀ l' ∈ l.tails, l'.toFinset ∈ Sys)
 
-instance {α : Type _} [DecidableEq α] (Sys : Finset (Finset α)) [Accessible Sys] :
+instance toHereditaryLanguage_Hereditary {α : Type _} [DecidableEq α] (Sys : Finset (Finset α))
+  [Accessible Sys] :
     Language.Hereditary (toHereditaryLanguage Sys) where
   simple _ hw := by
     simp [toHereditaryLanguage] at hw
@@ -177,13 +179,45 @@ theorem hereditary_language_lemma {α : Type _} [DecidableEq α] {Lang : Finset 
         w₁.toFinset = w₂.toFinset ∪ {x} → x :: w₂ ∈ Lang) := by
   constructor <;> intro h
   . intro w₁ hw₁ w₂ hw₂ x hx₁ hx₂
-    have h₁ : w₁.toFinset ∈ Language.toAssociatedSetSystem Lang := by
+    rw [h]
+    have hacc := SetSystem.toAssociatedSetSystem_Accessible Lang
+    have hher := SetSystem.toHereditaryLanguage_Hereditary (Language.toAssociatedSetSystem Lang)
+    simp [SetSystem.toHereditaryLanguage]
+    have w₁_nodup := ‹Language.Hereditary Lang›.simple _ hw₁
+    have w₂_nodup := ‹Language.Hereditary Lang›.simple _ hw₂
+    constructor <;> try apply And.intro
+    . exists w₁.toFinset
+      simp at hx₁
+      simp [w₁_nodup, List.Nodup.dedup]
+      constructor
+      . simp [Language.toAssociatedSetSystem]; exists w₁
+      . apply List.perm_of_nodup_nodup_toFinset_eq w₁_nodup _
+          (by simp [hx₂, Finset.insert_eq, Finset.union_comm])
+        simp only [List.nodup_cons, hx₁, not_false_eq_true, w₂_nodup, and_self]
+    . simp [Language.toAssociatedSetSystem]
+      exists w₁
+      simp only [hw₁, hx₂, List.mem_toFinset, Finset.insert_eq, Finset.union_comm, and_self]
+    . rintro w ⟨w', hw'⟩
+      have := hher.3 w w' (hw' ▸ h ▸ hw₂)
+      simp [SetSystem.toHereditaryLanguage] at this
+      exact this.2 _ ⟨[], List.nil_append _⟩
+  . ext w
+    constructor <;> intro h₀
+    . simp [SetSystem.toHereditaryLanguage]
+      constructor
+      . exists w.toFinset
+        apply And.intro (by simp [Language.toAssociatedSetSystem]; exists w)
+        simp; rw [List.Nodup.dedup (‹Language.Hereditary Lang›.1.1 _ h₀)]
+      . rintro w' ⟨w'', hw''⟩
+        simp [Language.toAssociatedSetSystem]
+        exists w'
+        simp; exact ‹Language.Hereditary Lang›.3 w' w'' (hw'' ▸ h₀)
+    . simp [SetSystem.toHereditaryLanguage, Language.toAssociatedSetSystem] at h₀
+      let ⟨⟨w₁, hw₁₁, hw₁₂⟩, h₁⟩ := h₀
+      have ⟨w₀, hw₀⟩ : ∃ w₀, w₀ <:+ w ∧ w₀ ∈ Lang :=
+        ⟨[], List.nil_suffix _, ‹Language.Hereditary Lang›.2⟩
       sorry
-    have h₂ : w₂.toFinset ∈ Language.toAssociatedSetSystem Lang := by
-      sorry
-    let _ : SetSystem.Accessible (Language.toAssociatedSetSystem Lang) := sorry
-    sorry
-  . sorry
+
 namespace SetSystem
 
 protected theorem Finset.card_induction_on {α : Type _} {p : Finset α → Prop} [DecidableEq α]
