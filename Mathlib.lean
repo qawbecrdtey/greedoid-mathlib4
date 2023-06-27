@@ -609,6 +609,7 @@ import Mathlib.Analysis.InnerProductSpace.Dual
 import Mathlib.Analysis.InnerProductSpace.EuclideanDist
 import Mathlib.Analysis.InnerProductSpace.GramSchmidtOrtho
 import Mathlib.Analysis.InnerProductSpace.LaxMilgram
+import Mathlib.Analysis.InnerProductSpace.LinearPMap
 import Mathlib.Analysis.InnerProductSpace.Orientation
 import Mathlib.Analysis.InnerProductSpace.Orthogonal
 import Mathlib.Analysis.InnerProductSpace.PiL2
@@ -825,6 +826,7 @@ import Mathlib.CategoryTheory.Category.ULift
 import Mathlib.CategoryTheory.Closed.Cartesian
 import Mathlib.CategoryTheory.Closed.Functor
 import Mathlib.CategoryTheory.Closed.FunctorCategory
+import Mathlib.CategoryTheory.Closed.Ideal
 import Mathlib.CategoryTheory.Closed.Monoidal
 import Mathlib.CategoryTheory.Closed.Types
 import Mathlib.CategoryTheory.Closed.Zero
@@ -1838,6 +1840,7 @@ import Mathlib.Geometry.Manifold.Algebra.Monoid
 import Mathlib.Geometry.Manifold.Algebra.Structures
 import Mathlib.Geometry.Manifold.BumpFunction
 import Mathlib.Geometry.Manifold.ChartedSpace
+import Mathlib.Geometry.Manifold.Complex
 import Mathlib.Geometry.Manifold.ConformalGroupoid
 import Mathlib.Geometry.Manifold.ContMDiff
 import Mathlib.Geometry.Manifold.ContMDiffMap
@@ -2151,6 +2154,7 @@ import Mathlib.Logic.Embedding.Basic
 import Mathlib.Logic.Embedding.Set
 import Mathlib.Logic.Encodable.Basic
 import Mathlib.Logic.Encodable.Lattice
+import Mathlib.Logic.Equiv.Array
 import Mathlib.Logic.Equiv.Basic
 import Mathlib.Logic.Equiv.Defs
 import Mathlib.Logic.Equiv.Embedding
@@ -2738,10 +2742,12 @@ import Mathlib.RingTheory.Valuation.ValuationRing
 import Mathlib.RingTheory.Valuation.ValuationSubring
 import Mathlib.RingTheory.WittVector.Basic
 import Mathlib.RingTheory.WittVector.Defs
+import Mathlib.RingTheory.WittVector.Frobenius
 import Mathlib.RingTheory.WittVector.IsPoly
 import Mathlib.RingTheory.WittVector.MulP
 import Mathlib.RingTheory.WittVector.StructurePolynomial
 import Mathlib.RingTheory.WittVector.Teichmuller
+import Mathlib.RingTheory.WittVector.Verschiebung
 import Mathlib.RingTheory.WittVector.WittAttributes
 import Mathlib.RingTheory.WittVector.WittPolynomial
 import Mathlib.RingTheory.ZMod
@@ -2753,6 +2759,7 @@ import Mathlib.SetTheory.Cardinal.Finite
 import Mathlib.SetTheory.Cardinal.Ordinal
 import Mathlib.SetTheory.Cardinal.SchroederBernstein
 import Mathlib.SetTheory.Game.Basic
+import Mathlib.SetTheory.Game.Impartial
 import Mathlib.SetTheory.Game.Ordinal
 import Mathlib.SetTheory.Game.PGame
 import Mathlib.SetTheory.Lists
@@ -2765,6 +2772,7 @@ import Mathlib.SetTheory.Ordinal.NaturalOps
 import Mathlib.SetTheory.Ordinal.Notation
 import Mathlib.SetTheory.Ordinal.Principal
 import Mathlib.SetTheory.Ordinal.Topology
+import Mathlib.SetTheory.Surreal.Basic
 import Mathlib.SetTheory.ZFC.Basic
 import Mathlib.SetTheory.ZFC.Ordinal
 import Mathlib.Tactic
