@@ -377,55 +377,31 @@ def weakerExchangeAxiom (Sys : Finset (Finset α)) :=
   (hxz₂ : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
     s ∪ {y, z} ∈ Sys
 
-theorem weakerExchangeAxiom_weakExchangeAxiom {Sys : Finset (Finset α)} [Accessible Sys]
-  (hSys : weakerExchangeAxiom Sys) :
-    weakExchangeAxiom Sys := by
-  intro s₁ hs₁ s₂ hs₂ hs
-  apply (em (s₂ ⊆ s₁)).elim <;> intro h
-  . have ⟨x, hx⟩ : ∃ x, x ∈ s₁ \ s₂ := card_lt_mem_sdiff (by simp only [hs, lt_add_iff_pos_right])
-    exists x
-    simp only [hx, true_and]
-    have : s₂ ∪ {x} = s₁ := by
-      ext y
-      constructor <;> intro hy
-      . simp at hy
-        apply hy.elim (fun hy => h hy)
-        intro hy
-        simp only [← hy, mem_sdiff] at hx
-        exact hx.1
-      . simp only [Finset.mem_union, Finset.mem_singleton]
-        by_cases h₀ : y ∈ s₂
-        . exact Or.inl h₀
-        . apply Or.inr
-          rw [Nat.add_comm] at hs
-          have hs := Nat.sub_eq_of_eq_add hs
-          rw [← Finset.card_sdiff h, Finset.card_eq_one] at hs
-          let ⟨a, ha⟩ := hs
-          rw [ha, Finset.mem_singleton] at hx
-          have : y ∈ s₁ \ s₂ := by simp only [mem_sdiff, hy, h₀]
-          rw [ha, Finset.mem_singleton] at this
-          exact hx ▸ this
-    exact this ▸ hs₁
-  .
-    sorry
-
-theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
-    TFAE [exchangeAxiom Sys, weakExchangeAxiom Sys, weakerExchangeAxiom Sys] := by
-  tfae_have 1 → 2
-  {
-    intro h _ hs₁ _ hs₂ hs
+theorem exchangeAxiom_weakExchangeAxiom_iff {Sys : Finset (Finset α)} [Accessible Sys] :
+    exchangeAxiom Sys ↔ weakExchangeAxiom Sys := by
+  constructor <;> intro h
+  . intro _ hs₁ _ hs₂ hs
     let ⟨x, hx⟩ := h hs₁ hs₂ (by simp [hs])
     exact ⟨x, hx⟩
-  }
-  tfae_have 2 → 1
-  {
-    intro h s₁ hs₁ s₂ hs₂ hs
+  . intro s₁ hs₁ s₂ hs₂ hs
     have ⟨a, ha₁, ha₂, ha₃⟩ := accessible_system_smaller_set
-      (fun h' => (Nat.not_eq_zero_of_lt hs) (Finset.card_eq_zero.mpr h')) hs₁
+      (fun h' => (Nat.not_eq_zero_of_lt hs) (card_eq_zero.mpr h')) hs₁
       (by simp_arith at hs; exact hs : s₂.card < s₁.card)
     have ⟨x, hx₁, hx₂⟩ := h ha₁ hs₂ ha₃
     exists x; simp_all; exact ha₂ hx₁.1
-  }
+
+theorem weakerExchangeAxiom_exchangeAxiom {Sys : Finset (Finset α)} [Accessible Sys]
+  (hSys : weakerExchangeAxiom Sys) :
+    exchangeAxiom Sys := by
+  intro s₁ hs₁ s₂ hs₂ hs
+  by_cases h : s₂ ⊆ s₁
+  . sorry
+  . sorry
+
+theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
+    TFAE [exchangeAxiom Sys, weakExchangeAxiom Sys, weakerExchangeAxiom Sys] := by
+  tfae_have 1 ↔ 2
+  { exact exchangeAxiom_weakExchangeAxiom_iff }
   tfae_have 2 → 3
   {
     intro h s x hx₁ _ y hy₁ hy₂ z hz hxz₁ hxz₂ hxy
