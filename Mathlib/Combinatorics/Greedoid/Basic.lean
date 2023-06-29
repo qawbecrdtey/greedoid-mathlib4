@@ -395,7 +395,8 @@ theorem weakerExchangeAxiom_exchangeAxiom {Sys : Finset (Finset α)} [Accessible
     exchangeAxiom Sys := by
   intro s₁ hs₁ s₂ hs₂ hs
   by_cases h : s₂ ⊆ s₁
-  . sorry
+  . have ⟨s', hs'₁, hs'₂, hs'₃⟩ := accessible_system_smaller_set sorry hs₁ hs
+    sorry
   . sorry
 
 theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
@@ -431,8 +432,8 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
       rw [this]
       exact hz₂'
   }
-  tfae_have 3 → 2
-  { exact weakerExchangeAxiom_weakExchangeAxiom }
+  tfae_have 3 → 1
+  { exact weakerExchangeAxiom_exchangeAxiom }
   tfae_finish
 
 /-- Add to `exchange_axioms_TFAE`? -/
