@@ -326,6 +326,13 @@ decreasing_by
     (Finset.card_lt_card ((Finset.ssubset_iff_of_subset hs₂).mpr ⟨x, hx₂, hx₁⟩))
     (by simp_arith)
 
+theorem accessible_bases_nonempty {Sys : Finset (Finset α)} [Accessible Sys] {s : Finset α} :
+    ∃ b, b ∈ bases Sys s :=
+  let ⟨b, hb⟩ := exists_bases_containing_feasible_set
+    ‹Accessible Sys›.contains_empty
+    (Finset.empty_subset s)
+  ⟨b, hb.1⟩
+
 end SetSystem
 
 theorem card_lt_mem_sdiff {α : Type _} [DecidableEq α] {s₁ s₂ : Finset α} (hs : s₁.card < s₂.card) :
