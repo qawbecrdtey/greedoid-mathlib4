@@ -308,7 +308,7 @@ theorem exists_bases_containing_feasible_set {Sys : Finset (Finset α)} {s a : F
     simp [bases, hs₁, hs₂]
     intro x hx; simp only [h, hx]
   . simp only [not_forall, exists_prop] at h
-    let ⟨x, hx₁, hx₂⟩ := h
+    let ⟨x, _, hx₂⟩ := h
     simp only [not_not, not_or] at hx₂
     let ⟨hx₂, hx₃⟩ := hx₂
     have ⟨b, hb⟩ := exists_bases_containing_feasible_set hx₃ (fun y hy => by
@@ -320,6 +320,7 @@ theorem exists_bases_containing_feasible_set {Sys : Finset (Finset α)} {s a : F
 termination_by exists_bases_containing_feasible_set Sys s a _ _ => a.card - s.card
 decreasing_by
   simp_wf
+  have hx₁ := ‹¬ x ∈ s›
   simp [hx₁]
   exact Nat.sub_lt_sub_left
     (Finset.card_lt_card ((Finset.ssubset_iff_of_subset hs₂).mpr ⟨x, hx₂, hx₁⟩))
@@ -345,9 +346,15 @@ def weakerExchangeAxiom (Sys : Finset (Finset α)) :=
   {s : Finset α} →
   {x : α} → (hx₁ : x ∉ s) → (hx₂ : s ∪ {x} ∈ Sys) →
   {y : α} → (hy₁ : y ∉ s) → (hy₂ : s ∪ {y} ∈ Sys) →
-  {z : α} → (hz : z ∉ s) →
-  (hxz : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
+  {z : α} → (hz : z ∉ s) → (hxz₁ : x ≠ z) →
+  (hxz₂ : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
     s ∪ {y, z} ∈ Sys
+
+theorem exchange_axioms_TFAE_helper {Sys : Finset (Finset α)} [Accessible Sys]
+  (hSys : weakerExchangeAxiom Sys) :
+    weakExchangeAxiom Sys := by
+  intro s₁ hs₁ s₂ hs₂ hs
+  sorry
 
 theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
     TFAE [exchangeAxiom Sys, weakExchangeAxiom Sys, weakerExchangeAxiom Sys] := by
@@ -368,8 +375,11 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
   }
   tfae_have 2 → 3
   {
-    intro h s x hx₁ hx₂ y hy₁ hy₂ z hz hxz hxy
-    let ⟨z', hz₁', hz₂'⟩ := h hxz hy₂ (by admit)
+    intro h s x hx₁ _ y hy₁ hy₂ z hz hxz₁ hxz₂ hxy
+    let ⟨z', hz₁', hz₂'⟩ := h hxz₂ hy₂ (by
+      simp [hxz₁, hx₁]
+      rw [union_comm, union_comm s {y}, ← insert_eq, ← insert_eq]
+      simp [hy₁, hz])
     simp at hz₁'
     let ⟨h₁, h₂⟩ := hz₁'
     apply h₁.elim <;> intro h₁ <;> try (apply h₁.elim <;> intro h₁)
@@ -393,7 +403,7 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
       exact hz₂'
   }
   tfae_have 3 → 2
-  { sorry }
+  { exact exchange_axioms_TFAE_helper }
   tfae_finish
 
 /-- Add to `exchange_axioms_TFAE`? -/
