@@ -328,6 +328,26 @@ decreasing_by
 
 end SetSystem
 
+theorem card_lt_mem_sdiff {α : Type _} [DecidableEq α] {s₁ s₂ : Finset α} (hs : s₁.card < s₂.card) :
+    ∃ x, x ∈ s₂ \ s₁ := by
+  by_cases h : s₁ ⊆ s₂
+  . by_contra' h'
+    simp [← Finset.subset_iff] at h'
+    simp only [Finset.Subset.antisymm_iff.mpr ⟨h, h'⟩, lt_self_iff_false] at hs
+  . have ⟨x, hx⟩ := @card_lt_mem_sdiff _ _ (s₁ ∩ s₂) s₂
+      (Nat.lt_of_le_of_lt (Finset.card_le_of_subset (Finset.inter_subset_left _ _)) hs)
+    exists x; simp at hx; simp [hx]
+termination_by card_lt_mem_sdiff s₁ _ _ => s₁.card
+decreasing_by
+  simp_wf
+  apply (Nat.le_iff_lt_or_eq.mp (Finset.card_le_of_subset (Finset.inter_subset_left s₁ s₂))).elim
+    (fun h => h)
+  intro h₀
+  exfalso; apply h
+  rw [← Finset.inter_eq_left_iff_subset]
+  apply Finset.eq_of_subset_of_card_le (Finset.inter_subset_left _ _)
+  rw [h₀]
+
 section ExchangeAxioms
 
 open List Finset Language SetSystem
@@ -350,11 +370,37 @@ def weakerExchangeAxiom (Sys : Finset (Finset α)) :=
   (hxz₂ : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
     s ∪ {y, z} ∈ Sys
 
-theorem exchange_axioms_TFAE_helper {Sys : Finset (Finset α)} [Accessible Sys]
+theorem weakerExchangeAxiom_weakExchangeAxiom {Sys : Finset (Finset α)} [Accessible Sys]
   (hSys : weakerExchangeAxiom Sys) :
     weakExchangeAxiom Sys := by
   intro s₁ hs₁ s₂ hs₂ hs
-  sorry
+  apply (em (s₂ ⊆ s₁)).elim <;> intro h
+  . have ⟨x, hx⟩ : ∃ x, x ∈ s₁ \ s₂ := card_lt_mem_sdiff (by simp only [hs, lt_add_iff_pos_right])
+    exists x
+    simp only [hx, true_and]
+    have : s₂ ∪ {x} = s₁ := by
+      ext y
+      constructor <;> intro hy
+      . simp at hy
+        apply hy.elim (fun hy => h hy)
+        intro hy
+        simp only [← hy, mem_sdiff] at hx
+        exact hx.1
+      . simp only [Finset.mem_union, Finset.mem_singleton]
+        by_cases h₀ : y ∈ s₂
+        . exact Or.inl h₀
+        . apply Or.inr
+          rw [Nat.add_comm] at hs
+          have hs := Nat.sub_eq_of_eq_add hs
+          rw [← Finset.card_sdiff h, Finset.card_eq_one] at hs
+          let ⟨a, ha⟩ := hs
+          rw [ha, Finset.mem_singleton] at hx
+          have : y ∈ s₁ \ s₂ := by simp only [mem_sdiff, hy, h₀]
+          rw [ha, Finset.mem_singleton] at this
+          exact hx ▸ this
+    exact this ▸ hs₁
+  .
+    sorry
 
 theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
     TFAE [exchangeAxiom Sys, weakExchangeAxiom Sys, weakerExchangeAxiom Sys] := by
@@ -403,7 +449,7 @@ theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
       exact hz₂'
   }
   tfae_have 3 → 2
-  { exact exchange_axioms_TFAE_helper }
+  { exact weakerExchangeAxiom_weakExchangeAxiom }
   tfae_finish
 
 /-- Add to `exchange_axioms_TFAE`? -/
