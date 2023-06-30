@@ -37,7 +37,7 @@ namespace Language
 class Simple {α : Type _} [DecidableEq α] (Lang : Finset (List α)) where
   simple : ∀ w ∈ Lang, w.Nodup
 
-theorem simple_language_word_head_notin_tail {α : Type} [DecidableEq α] (Lang : Finset (List α))
+theorem simple_language_word_head_notin_tail {α : Type _} [DecidableEq α] (Lang : Finset (List α))
     [Simple Lang] {h : α} {t : List α} (ht : h :: t ∈ Lang) : h ∉ t := by
   have := ‹Simple Lang›.simple (h :: t) ht
   simp at this
@@ -169,6 +169,21 @@ theorem accessible_system_smaller_set {α : Type _} [DecidableEq α] {Sys : Fins
   rw [← Nat.add_sub_assoc hn, Nat.add_comm, Nat.sub_eq_iff_eq_add this] at hs'₃
   simp_arith at hs'₃
   exact hs'₃
+
+protected theorem induction_on_accessible {α : Type _} {p : Finset α → Prop} [DecidableEq α]
+  {Sys : Finset (Finset α)} [Accessible Sys]
+  (s : Finset α) (hs : s ∈ Sys)
+  (empty : p ∅) (insert : ∀ ⦃a : α⦄ {s : Finset α}, s ∈ Sys → s ∪ {a} ∈ Sys → p (s ∪ {a})) :
+    p s := by
+  by_cases s = ∅ <;> simp_all only [empty]
+  let ⟨x, hx₁, hx₂⟩ := ‹Accessible Sys›.accessible _ hs h
+  have := @insert x (s \ {x}) hx₂ (by
+    rw [Finset.sdiff_union_self_eq_union, Finset.union_comm,
+      ← Finset.insert_eq, Finset.insert_eq_of_mem hx₁]
+    exact hs)
+  rw [Finset.sdiff_union_self_eq_union, Finset.union_comm, ← Finset.insert_eq,
+    Finset.insert_eq_of_mem hx₁] at this
+  exact this
 
 end SetSystem
 
@@ -619,29 +634,17 @@ instance {α : Type _} [Fintype α] [DecidableEq α] {S : GreedoidSystem α} :
 protected def GreedoidLanguage.fromLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α]
   (L : GreedoidLanguage α) := Language.toAssociatedSetSystem L.language
 
-instance AccessibleLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α] (L : GreedoidLanguage α) :
-    SetSystem.Accessible L.fromLanguageToSystem' where
-  contains_empty := by
-    simp [Language.toAssociatedSetSystem, GreedoidLanguage.fromLanguageToSystem', L.contains_empty]
-  accessible := by
-    simp [Language.toAssociatedSetSystem, GreedoidLanguage.fromLanguageToSystem']
-    intro w hw₁ hw₂
-    match w with
-    | [] => contradiction
-    | h :: w =>
-      exists h; simp
-      exists w
-      simp [Finset.insert_sdiff_of_mem, L.contains_prefix w [h] hw₁]
-      have := L.simple (h :: w) hw₁
-      simp at this; simp [hw₂, this]
+instance AccessibleLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α]
+  (L : GreedoidLanguage α) :
+    SetSystem.Accessible L.fromLanguageToSystem' :=
+  SetSystem.toAssociatedSetSystem_Accessible L.language
 
 theorem greedoidSystemAxiom_fromLanguageToSystem' {α : Type _} [Fintype α] [DecidableEq α]
   {L : GreedoidLanguage α} :
     greedoidSystemAxiom L.fromLanguageToSystem' := by
-  let Sys := L.fromLanguageToSystem'
-  have : SetSystem.Accessible Sys := AccessibleLanguageToSystem' _
-  simp [greedoidSystemAxiom, this.1]
-  constructor <;> simp_all [this.2]
+  have := AccessibleLanguageToSystem' L
+  simp only [greedoidSystemAxiom, this.contains_empty, ne_eq, true_and]
+  apply And.intro (fun _ h₁ h₂ => this.accessible _ h₁ h₂)
   simp [exchangeAxiom, GreedoidLanguage.fromLanguageToSystem', Language.toAssociatedSetSystem]
   intro w₁ hw₁ w₂ hw₂ hw
   have ⟨x, hx₁, hx₂⟩ := L.exchangeAxiom hw₁ hw₂ (by
@@ -663,8 +666,7 @@ theorem fromLanguageToSystem'_eq {α : Type _} [Fintype α] [DecidableEq α]
   let ⟨Lang₁, hLang₁₁, hLang₁₂, hLang₁₃, hLang₁₄⟩ := L₁
   let ⟨Lang₂, hLang₂₁, hLang₂₂, hLang₂₃, hLang₂₄⟩ := L₂
   simp_all [GreedoidLanguage.fromLanguageToSystem', Language.toAssociatedSetSystem]
-  ext w
-  constructor <;> intro h <;> induction' w with head w ih <;> simp only [hLang₁₂, hLang₂₂]
+  ext w; constructor <;> intro h <;> induction' w with head w ih <;> simp only [hLang₁₂, hLang₂₂]
   . have hhead : head ∉ w := by have := hLang₁₁ _ h; simp at this; exact this.1
     have hw₁ := ih (hLang₁₃ w [head] (by simp only [List.singleton_append, h]))
     have ⟨w', hw'₁, hw'₂⟩ : ∃ w' ∈ Lang₂, w'.toFinset = w.toFinset ∪ {head} := by
@@ -721,80 +723,59 @@ theorem fromLanguageToSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
 
     `language = {w | underlying set of every prefix of w is feasible}` -/
 protected def GreedoidSystem.fromSystemToLanguage' {α : Type _} [Fintype α] [DecidableEq α]
-  (S : GreedoidSystem α) : Finset (List α) :=
-  let perm_set := Finset.biUnion (S.feasible_set.map ⟨fun s => s.val.lists, by
-    intro s
-    have : ∃ l, l ∈ s.val.lists := by
-      induction' s using Finset.induction_on with a s hs ih
-      . exists []; simp
-      . let ⟨l, hl⟩ := ih
-        exists a :: l
-        have : a ∉ l := by
-          intro h'; apply hs; clear hs
-          simp [Multiset.mem_lists_iff] at hl
-          rw [Finset.mem_def, hl]
-          simp [h']
-        simp_all
-    intro t h
-    simp at h
-    let ⟨l, hl⟩ := this
-    have hr := h ▸ hl
-    have hl := (s.val.mem_lists_iff l).mp hl
-    have hr := (t.val.mem_lists_iff l).mp hr
-    apply Finset.eq_of_veq
-    simp only [hl, hr]⟩) id
-  (perm_set.filter (fun l => ∀ l' ∈ l.tails, l'.toFinset ∈ S.feasible_set))
+  (S : GreedoidSystem α) : Finset (List α) := SetSystem.toHereditaryLanguage S.feasible_set
+
+instance HereditarySystemToLanguage' {α : Type _} [Fintype α] [DecidableEq α]
+  (S : GreedoidSystem α) :
+    Language.Hereditary S.fromSystemToLanguage' :=
+  SetSystem.toHereditaryLanguage_Hereditary S.feasible_set
 
 theorem greedoidLanguageAxiom_fromSystemToLanguage' {α : Type _} [Fintype α] [DecidableEq α]
   {S : GreedoidSystem α} :
-    greedoidLanguageAxiom S.fromSystemToLanguage' := ⟨fun _ hw => by
-  simp [GreedoidSystem.fromSystemToLanguage'] at hw
-  let ⟨⟨a, _, ha⟩, _⟩ := hw; clear hw
-  rw [← Multiset.coe_nodup]
-  exact ha ▸ a.nodup, by
-  simp [GreedoidSystem.fromSystemToLanguage', S.contains_empty], fun w₁ w₂ hw => by
-  simp [GreedoidSystem.fromSystemToLanguage'] at *
-  let ⟨⟨a, _, ha⟩, h⟩ := hw; clear hw
-  have : (Multiset.ofList _).Nodup := ha ▸ a.nodup
-  simp only [Multiset.coe_nodup] at this
-  constructor
-  . exists w₁.toFinset
-    apply And.intro (h _ (Or.inl ⟨[], by simp; exists w₂; simp only [List.append_nil]⟩)) _
-    simp
-    rw [List.dedup_eq_self.mpr]
-    exact List.Nodup.of_append_right this
-  . intro w hw
-    apply h _
-    by_cases (w = w₁)
-    . exact Or.inl ⟨[], by simp [h, List.nil_suffix]⟩
-    . apply Or.inr
-      cases w₁
-      . simp_all
-      . rw [List.suffix_cons_iff] at hw
-        simp; apply hw.elim <;> tauto, by
-  intro w₁ hw₁ w₂ hw₂ hw
-  simp [GreedoidSystem.fromSystemToLanguage'] at *
+    greedoidLanguageAxiom S.fromSystemToLanguage' := by
+  have := HereditarySystemToLanguage' S
+  simp only [greedoidLanguageAxiom, this.contains_empty, gt_iff_lt, true_and]
+  apply And.intro this.simple (And.intro (fun _ _ h => this.contains_prefix _ _ h) _)
+  simp [GreedoidSystem.fromSystemToLanguage', SetSystem.toHereditaryLanguage]
+  intro w₁ s₁ hs₁₁ hs₁₂ hw₁ w₂ s₂ hs₂₁ hs₂₂ hw₂ hw
   have w₁_nodup : w₁.Nodup := by
-    let ⟨a, _, ha⟩ := hw₁.1; rw [← Multiset.coe_nodup]; exact ha ▸ a.nodup
+    sorry
   have w₂_nodup : w₂.Nodup := by
-    let ⟨a, _, ha⟩ := hw₂.1; rw [← Multiset.coe_nodup]; exact ha ▸ a.nodup
-  let ⟨x, hx⟩ := @GreedoidSystem.exchangeAxiom α _ _ S w₁.toFinset (hw₁.2 w₁ w₁.suffix_refl)
-    w₂.toFinset (hw₂.2 w₂ w₂.suffix_refl) (by
-      simp [List.toFinset_card_of_nodup, w₁_nodup, w₂_nodup, hw])
+    sorry
+  have s₁_eq_w₁_toFinset : s₁ = w₁.toFinset := by
+    sorry
+  have s₂_eq_w₂_toFinset : s₂ = w₂.toFinset := by
+    sorry
+  have ⟨x, hx₁, hx₂⟩ := S.exchangeAxiom hs₁₁ hs₂₁ (by
+    simp only [s₁_eq_w₁_toFinset, s₂_eq_w₂_toFinset, w₁_nodup, w₂_nodup,
+      List.toFinset_card_of_nodup, hw])
   exists x
-  simp at hx; simp [hx]
-  have h₁ : insert x w₂.toFinset = w₂.toFinset ∪ {x} := by
-    ext a; constructor <;> intro h <;> simp at * <;> tauto
-  constructor
-  . exists (x :: w₂).toFinset; simp
-    simp [hx, List.dedup_eq_self.mpr w₂_nodup, h₁]
-    simp [insert, List.insert, hx.1.2]
-  . simp [h₁, hx.2]
-    exact hw₂.2⟩
+  have x_notin_w₂ : x ∉ w₂ := by
+    rw [s₁_eq_w₁_toFinset, s₂_eq_w₂_toFinset] at hx₁
+    simp_all
+  constructor <;> try apply And.intro <;> try apply And.intro
+  . rw [s₁_eq_w₁_toFinset, s₂_eq_w₂_toFinset] at hx₁
+    simp_all
+  . exists w₂.toFinset ∪ {x}
+    constructor
+    . exact s₂_eq_w₂_toFinset ▸ hx₂
+    . rw [Finset.union_comm, ← Finset.insert_eq]
+      simp [x_notin_w₂, w₂_nodup, List.Nodup.dedup]
+  . rw [Finset.union_comm, ← Finset.insert_eq, s₂_eq_w₂_toFinset] at hx₂
+    exact hx₂
+  . intro w' hw'
+    sorry
 
 theorem fromSystemToLanguage'_eq {α : Type _} [Fintype α] [DecidableEq α]
   {S₁ S₂ : GreedoidSystem α} (hS : S₁.fromSystemToLanguage' = S₂.fromSystemToLanguage') :
-    S₁ = S₂ := sorry
+    S₁ = S₂ := by
+  let ⟨Sys₁, hSys₁₁, hSys₁₂, hSys₁₃⟩ := S₁
+  let ⟨Sys₂, hSys₂₁, hSys₂₂, hSys₂₃⟩ := S₂
+  simp_all [GreedoidSystem.fromSystemToLanguage']
+  ext s; constructor <;> intro h
+  . -- exact @SetSystem.induction_on_accessible _ (fun x => x ∈ S₂.1) _ S₁.1 _ s _ S₂.2 sorry
+    sorry
+  . sorry
 
 /-- Converts system to language. -/
 protected def GreedoidSystem.fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
@@ -814,7 +795,7 @@ theorem fromSystemToLanguage_eq {α : Type _} [Fintype α] [DecidableEq α]
 
 @[simp]
 theorem fromSystemToLanguage_fromLanguageToSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
-    {S : GreedoidSystem α} : S.fromSystemToLanguage.fromLanguageToSystem = S := by
+    {S : GreedoidSystem α} : S.fromSystemToLanguage.fromLanguageToSystem = S := sorry
   sorry
 
 @[simp]
