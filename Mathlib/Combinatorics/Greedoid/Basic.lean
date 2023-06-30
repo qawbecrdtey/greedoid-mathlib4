@@ -395,8 +395,7 @@ theorem weakerExchangeAxiom_exchangeAxiom {Sys : Finset (Finset α)} [Accessible
     exchangeAxiom Sys := by
   intro s₁ hs₁ s₂ hs₂ hs
   by_cases h : s₂ ⊆ s₁
-  . have ⟨s', hs'₁, hs'₂, hs'₃⟩ := accessible_system_smaller_set sorry hs₁ hs
-    sorry
+  . sorry
   . sorry
 
 theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
@@ -535,11 +534,35 @@ theorem greedoidLanguageAxiom_greedoidLangauge {α : Type _} [Fintype α] {L : G
 
 instance {α : Type _} [Fintype α] [DecidableEq α] : Fintype (GreedoidLanguage α) where
   elems :=
-    let simple_lists : Finset (List α) := sorry
+    let simple_lists : Finset (List α) :=
+      (Finset.univ.powerset.image fun s => s.val.lists).biUnion id
     let simple_languages : Finset (Finset (List α)) :=
       simple_lists.powerset.filter greedoidLanguageAxiom
-    simple_languages.attach.map ⟨fun Lang => ⟨Lang.val, sorry, sorry, sorry, sorry⟩, sorry⟩
-  complete := sorry
+    simple_languages.attach.map ⟨fun Lang => ⟨Lang.val, by
+      intro w hw
+      let ⟨val, property⟩ := Lang; clear Lang; simp only at hw; simp at property
+      exact property.2.1 _ hw, by
+      let ⟨val, property⟩ := Lang; clear Lang; simp only; simp at property
+      exact property.2.2.1, by
+      let ⟨val, property⟩ := Lang; clear Lang; simp only; simp at property
+      exact property.2.2.2.1, by
+      let ⟨val, property⟩ := Lang; clear Lang; simp only; simp at property
+      intro _; exact property.2.2.2.2⟩, fun L₁ L₂ hL => by
+        simp only [GreedoidLanguage.mk.injEq] at hL ; exact Subtype.ext hL⟩
+  complete := by
+    intro L; simp; exists L.language; simp [greedoidLanguageAxiom_greedoidLangauge]
+    intro w hw
+    have ⟨s, hs₁, hs₂⟩ : ∃ s ∈ (Finset.univ.powerset.image fun s => s.val.lists), w ∈ s := by
+      exists w.toFinset.val.lists
+      simp [L.simple _ hw, List.Nodup.dedup]
+      exists w.toFinset
+      simp [L.simple _ hw, List.Nodup.dedup]
+    simp at hs₁
+    let ⟨t, ht⟩ := hs₁
+    rw [← ht] at hs₂
+    simp
+    exists w.toFinset
+    simp [L.simple _ hw, List.Nodup.dedup]
 
 instance {α : Type _} [Fintype α] [DecidableEq α] {L : GreedoidLanguage α} :
     Language.Hereditary L.language where
