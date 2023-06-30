@@ -663,7 +663,44 @@ theorem fromLanguageToSystem'_eq {α : Type _} [Fintype α] [DecidableEq α]
   let ⟨Lang₁, hLang₁₁, hLang₁₂, hLang₁₃, hLang₁₄⟩ := L₁
   let ⟨Lang₂, hLang₂₁, hLang₂₂, hLang₂₃, hLang₂₄⟩ := L₂
   simp_all [GreedoidLanguage.fromLanguageToSystem', Language.toAssociatedSetSystem]
-  sorry
+  ext w
+  constructor <;> intro h <;> induction' w with head w ih <;> simp only [hLang₁₂, hLang₂₂]
+  . have hhead : head ∉ w := by have := hLang₁₁ _ h; simp at this; exact this.1
+    have hw₁ := ih (hLang₁₃ w [head] (by simp only [List.singleton_append, h]))
+    have ⟨w', hw'₁, hw'₂⟩ : ∃ w' ∈ Lang₂, w'.toFinset = w.toFinset ∪ {head} := by
+      have ⟨w', hw'₁, hw'₃⟩ : ∃ w' ∈ Lang₂, w'.toFinset = (head :: w).toFinset := by
+        rw [← Finset.mem_image, ← hL, Finset.mem_image]; exists (head :: w)
+      exists w'
+      simp only [List.toFinset_cons] at hw'₃
+      simp only [hw'₁, hw'₃, hhead, Finset.insert_eq, Finset.union_comm]
+    have ⟨head', hhead'₁, hhead'₂⟩ := hLang₂₄ hw'₁ hw₁ (by
+      rw [Finset.union_comm, ← Finset.insert_eq] at hw'₂
+      rw [← List.toFinset_card_of_nodup (hLang₂₁ _ hw'₁),
+        ← List.toFinset_card_of_nodup (hLang₂₁ _ hw₁), hw'₂]
+      simp [hhead])
+    have : head = head' := by
+      have : head' ∉ w := by have := hLang₂₁ _ hhead'₂; rw [List.nodup_cons] at this; tauto
+      rw [← List.mem_toFinset, hw'₂, Finset.union_comm, ← Finset.insert_eq,
+        Finset.mem_insert, List.mem_toFinset] at hhead'₁; tauto
+    rw [this]; exact hhead'₂
+  . have hhead : head ∉ w := by have := hLang₂₁ _ h; simp at this; exact this.1
+    have hw₁ := ih (hLang₂₃ w [head] (by simp only [List.singleton_append, h]))
+    have ⟨w', hw'₁, hw'₂⟩ : ∃ w' ∈ Lang₁, w'.toFinset = w.toFinset ∪ {head} :=  by
+      have ⟨w', hw'₁, hw'₃⟩ : ∃ w' ∈ Lang₁, w'.toFinset = (head :: w).toFinset := by
+        rw [← Finset.mem_image, hL, Finset.mem_image]; exists (head :: w)
+      exists w'
+      simp only [List.toFinset_cons] at hw'₃
+      simp only [hw'₁, hw'₃, hhead, Finset.insert_eq, Finset.union_comm]
+    have ⟨head', hhead'₁, hhead'₂⟩ := hLang₁₄ hw'₁ hw₁ (by
+      rw [Finset.union_comm, ← Finset.insert_eq] at hw'₂
+      rw [← List.toFinset_card_of_nodup (hLang₁₁ _ hw'₁),
+        ← List.toFinset_card_of_nodup (hLang₁₁ _ hw₁), hw'₂]
+      simp [hhead])
+    have : head = head' := by
+      have : head' ∉ w := by have := hLang₁₁ _ hhead'₂; rw [List.nodup_cons] at this; tauto
+      rw [← List.mem_toFinset, hw'₂, Finset.union_comm, ← Finset.insert_eq,
+        Finset.mem_insert, List.mem_toFinset] at hhead'₁; tauto
+    rw [this]; exact hhead'₂
 
 /-- Converts language to system. -/
 protected def GreedoidLanguage.fromLanguageToSystem {α : Type _} [Fintype α] [DecidableEq α]
