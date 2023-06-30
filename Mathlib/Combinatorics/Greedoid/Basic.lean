@@ -539,10 +539,10 @@ instance {α : Type _} [Fintype α] [DecidableEq α] : Fintype (GreedoidLanguage
     let simple_languages : Finset (Finset (List α)) :=
       simple_lists.powerset.filter greedoidLanguageAxiom
     simple_languages.attach.map ⟨fun Lang => ⟨Lang.val, fun _ hw => by
-        let ⟨val, property⟩ := Lang; simp only at hw; simp at property; exact property.2.1 _ hw, by
-        let ⟨val, property⟩ := Lang; simp only; simp at property; exact property.2.2.1, by
-        let ⟨val, property⟩ := Lang; simp only; simp at property; exact property.2.2.2.1, by
-        let ⟨val, property⟩ := Lang; simp only; simp at property; exact fun _ => property.2.2.2.2⟩,
+        let ⟨val, prop⟩ := Lang; simp only at hw; simp at prop; exact prop.2.1 _ hw, by
+        let ⟨val, prop⟩ := Lang; simp only; simp at prop; exact prop.2.2.1, by
+        let ⟨val, prop⟩ := Lang; simp only; simp at prop; exact prop.2.2.2.1, by
+        let ⟨val, prop⟩ := Lang; simp only; simp at prop; exact fun _ => prop.2.2.2.2⟩,
       fun L₁ L₂ hL => by simp only [GreedoidLanguage.mk.injEq] at hL; exact Subtype.ext hL⟩
   complete := by
     intro L; simp; exists L.language; simp [greedoidLanguageAxiom_greedoidLangauge]
@@ -595,8 +595,14 @@ theorem greedoidSystemAxiom_greedoidSystem {α : Type _} [Fintype α] [Decidable
   ⟨S.contains_empty, S.accessible, S.exchangeAxiom⟩
 
 instance {α : Type _} [Fintype α] [DecidableEq α] : Fintype (GreedoidSystem α) where
-  elems := sorry
-  complete := sorry
+  elems := ((@Finset.univ α _).powerset.powerset.filter greedoidSystemAxiom).attach.map
+    ⟨fun Sys => ⟨Sys.val, by
+        let ⟨val, prop⟩ := Sys; simp only; simp at prop; exact prop.1, fun _ h₁ h₂ => by
+        let ⟨val, prop⟩ := Sys; simp only; simp at prop h₁; exact prop.2.1 _ h₁ h₂,
+        fun {a} b {c} d e => by
+        let ⟨val, prop⟩ := Sys; simp only; simp at prop a c b d; exact prop.2.2 b d e⟩,
+      fun S₁ S₂ hS => by simp only [GreedoidSystem.mk.injEq] at hS; exact Subtype.ext hS⟩
+  complete := by intro S; simp; exists S.feasible_set; simp [greedoidSystemAxiom_greedoidSystem]
 
 instance {α : Type _} [Fintype α] [DecidableEq α] {S : GreedoidSystem α} :
     SetSystem.Accessible S.feasible_set where
@@ -964,7 +970,7 @@ theorem weakerExchangeAxiom' : weakerExchangeAxiom G.system.feasible_set := by
 /-- Greedoid is full if the ground set is feasible. -/
 def full (G : Greedoid α) := (@Finset.univ α _) ∈ₛ G
 
-/-- The interval property is satisfied by matroids, antimatroids, and some greedoids. -/
+/-- The interval prop is satisfied by matroids, antimatroids, and some greedoids. -/
 def interval_property (G : Greedoid α) :=
   {A : Finset α} → A ∈ₛ G →
   {B : Finset α} → B ∈ₛ G →
