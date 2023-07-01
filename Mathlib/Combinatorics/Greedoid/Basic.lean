@@ -415,6 +415,15 @@ theorem accessible_bases_nonempty {Sys : Finset (Finset α)} [Accessible Sys] {s
     (Finset.empty_subset s)
   ⟨b, hb.1⟩
 
+theorem accessible_self_mem_bases_of_inter {Sys : Finset (Finset α)} [Accessible Sys]
+  {s₁ s₂ : Finset α} (hs : s₁ ∈ bases Sys (s₁ ∩ s₂)) :
+    s₁ ⊆ s₂ := by
+  intro x hx
+  simp [bases] at hs
+  have := hs.2.1 hx
+  rw [Finset.mem_inter] at this
+  tauto
+
 end SetSystem
 
 theorem card_lt_mem_sdiff {α : Type _} [DecidableEq α] {s₁ s₂ : Finset α} (hs : s₁.card < s₂.card) :
@@ -475,9 +484,32 @@ theorem exchangeAxiom_weakExchangeAxiom_iff {Sys : Finset (Finset α)} [Accessib
 theorem weakerExchangeAxiom_exchangeAxiom {Sys : Finset (Finset α)} [Accessible Sys]
   (hSys : weakerExchangeAxiom Sys) :
     exchangeAxiom Sys := by
-  intro s₁ hs₁ s₂ hs₂ hs
-  by_cases h : s₂ ⊆ s₁
-  . sorry
+  intro s₁' hs₁' s₂ hs₂ hs
+  have ⟨s₁, hs₁, hs₂, hs₃⟩ := accessible_system_smaller_set
+    (fun h => (Nat.not_eq_zero_of_lt hs) (card_eq_zero.mpr h)) hs₁' hs
+  have ⟨c, hc⟩ := @accessible_bases_nonempty _ _ _ Sys _ (s₁ ∩ s₂)
+  by_cases h : c = s₂
+  . have ⟨x, hx⟩ := card_lt_mem_sdiff (hs₃ ▸ (Nat.lt_succ_self s₂.card) : s₂.card < s₁.card)
+    exists x
+    rw [mem_sdiff] at *
+    simp only [hx, hs₂ hx.1, true_and]
+    rw [h, Finset.inter_comm] at hc
+    have := accessible_self_mem_bases_of_inter hc
+    have : (s₁ \ s₂).card = 1 := by
+      rw [Finset.card_sdiff this, hs₃, Nat.succ_sub (Nat.le.refl), Nat.sub_self]
+    have ⟨y, hy⟩ := Finset.card_eq_one.mp this
+    have : x = y := by
+      have ⟨z, _, hz⟩ := (Finset.singleton_iff_unique_mem _).mp ⟨y, hy⟩
+      simp only [mem_sdiff, and_imp] at hz
+      rw [hz _ hx.1 hx.2]
+      have : y ∈ s₁ \ s₂ := hy ▸ Finset.mem_singleton_self y
+      rw [mem_sdiff] at this
+      exact (hz _ this.1 this.2).symm
+    rw [this]
+    have : s₁ = s₂ ∪ {y} := by
+      rw [← hy]
+      simp only [union_sdiff_self_eq_union, right_eq_union_iff_subset, ‹s₂ ⊆ s₁›]
+    exact this ▸ hs₁
   . sorry
 
 theorem exchange_axioms_TFAE {Sys : Finset (Finset α)} [Accessible Sys] :
@@ -1123,11 +1155,11 @@ instance : SetSystem.Accessible G.system.feasible_set where
           exists t
         . simp [this.1]
 
-theorem weakExchangeAxiom' : weakExchangeAxiom G.system.feasible_set := by
+theorem weakExchangeAxiom : weakExchangeAxiom G.system.feasible_set := by
   apply (exchange_axioms_TFAE.out 0 1).mp
   exact G.system.exchangeAxiom
 
-theorem weakerExchangeAxiom' : weakerExchangeAxiom G.system.feasible_set := by
+theorem weakerExchangeAxiom : weakerExchangeAxiom G.system.feasible_set := by
   apply (exchange_axioms_TFAE.out 0 2).mp
   exact G.system.exchangeAxiom
 
@@ -1523,6 +1555,6 @@ variable {α : Type _} [Fintype α] [DecidableEq α] {A : Antimatroid α}
 
 theorem has_no_upper_bound : A.interval_property_wo_upper_bound := A.wo_upper_bound
 
-
+theorem is_full : A.full := sorry
 
 end Antimatroid
