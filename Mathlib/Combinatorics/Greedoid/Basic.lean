@@ -174,12 +174,12 @@ protected theorem induction_on_accessible {α : Type _} [Fintype α] [DecidableE
   {p : Finset α → Prop}
   {Sys : Finset (Finset α)} [Accessible Sys]
   (s : Finset α) (hs : s ∈ Sys)
-  (empty : p ∅) (insert : ∀ ⦃a : α⦄ {s : Finset α}, s ∈ Sys → s ∪ {a} ∈ Sys → p s → p (s ∪ {a})) :
+  (empty : p ∅) (insert : ∀ ⦃a : α⦄ {s : Finset α}, a ∉ s → s ∈ Sys → s ∪ {a} ∈ Sys → p s → p (s ∪ {a})) :
     p s := by
   by_cases s = ∅ <;> simp only [h, empty]
   have ⟨x, hx₁, hx₂⟩ := ‹Accessible Sys›.accessible _ hs h
   have := SetSystem.induction_on_accessible _ hx₂ empty insert
-  have := insert hx₂ (by
+  have := insert (by simp) hx₂ (by
     simp only [hx₁, Finset.sdiff_union_self_eq_union]
     rw [Finset.union_comm, ← Finset.insert_eq]
     simp only [hx₁, Finset.insert_eq_of_mem, hs] : s \ {x} ∪ {x} ∈ Sys) this
@@ -193,11 +193,31 @@ decreasing_by
   exact Nat.sub_lt (Nat.zero_lt_of_ne_zero (Finset.card_ne_zero_of_mem hx₁))
     (by simp only [Finset.card_singleton])
 
-theorem mem_toHereditaryLanguage {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
-  [Accessible Sys] {s : Finset α} (hs : s ∈ Sys) :
+theorem mem_toHereditaryLanguage {α : Type _} [Fintype α] [DecidableEq α]
+  {Sys : Finset (Finset α)} [Accessible Sys]
+  {s : Finset α} (hs : s ∈ Sys) :
     ∃ w ∈ toHereditaryLanguage Sys, w.toFinset = s := by
-
-  sorry
+  have := toHereditaryLanguage_Hereditary Sys
+  apply SetSystem.induction_on_accessible s hs
+  . exists ∅
+    simp only [List.empty_eq, List.toFinset_nil, and_true, this.contains_empty]
+  . rintro a s ha _ hs ⟨w, hw₁, hw₂⟩
+    exists a :: w
+    rw [Finset.union_comm, ← Finset.insert_eq]
+    simp only [List.toFinset_cons, hw₂, and_true]
+    simp [toHereditaryLanguage, hw₂]
+    have a_notin_w : a ∉ w := by simp only [← hw₂, List.mem_toFinset] at ha; simp only [ha]
+    constructor <;> try apply And.intro
+    . exists (s ∪ {a})
+      simp only [hs, true_and]
+      rw [← hw₂, Finset.union_comm, ← Finset.insert_eq]
+      simp [this.simple _ hw₁, List.Nodup.dedup, a_notin_w]
+    . rw [Finset.union_comm, ← Finset.insert_eq] at hs
+      exact hs
+    . rintro w' ⟨w'', hw''⟩
+      have := this.contains_prefix w' w'' (hw'' ▸ hw₁)
+      simp [toHereditaryLanguage] at this
+      exact this.2 _ ⟨[], List.nil_append _⟩
 
 end SetSystem
 
@@ -786,8 +806,8 @@ theorem fromSystemToLanguage'_eq {α : Type _} [Fintype α] [DecidableEq α]
   ext s; constructor <;> intro hs₁ <;> by_cases hs₂ : s = ∅ <;>
     simp only [hs₂, S₂.contains_empty, S₁.contains_empty]
   . apply SetSystem.induction_on_accessible s hs₁ S₂.contains_empty
-    intro a s hs₁ hs₂
-    -- SetSystem.mem_toHereditaryLanguage
+    intro a s ha hs₁ hs₂ hs₃
+    have ⟨w, hw₁, hw₂⟩ := SetSystem.mem_toHereditaryLanguage hs₂
     sorry
   . apply SetSystem.induction_on_accessible _ hs₁ S₁.contains_empty
     intro a s hs₁ hs₂
