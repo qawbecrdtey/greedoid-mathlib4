@@ -738,33 +738,29 @@ theorem greedoidLanguageAxiom_fromSystemToLanguage' {α : Type _} [Fintype α] [
   apply And.intro this.simple (And.intro (fun _ _ h => this.contains_prefix _ _ h) _)
   simp [GreedoidSystem.fromSystemToLanguage', SetSystem.toHereditaryLanguage]
   intro w₁ s₁ hs₁₁ hs₁₂ hw₁ w₂ s₂ hs₂₁ hs₂₂ hw₂ hw
-  have w₁_nodup : w₁.Nodup := by
-    sorry
-  have w₂_nodup : w₂.Nodup := by
-    sorry
+  have w₁_nodup : w₁.Nodup := Multiset.coe_nodup.mp (hs₁₂ ▸ s₁.nodup)
+  have w₂_nodup : w₂.Nodup := Multiset.coe_nodup.mp (hs₂₂ ▸ s₂.nodup)
   have s₁_eq_w₁_toFinset : s₁ = w₁.toFinset := by
-    sorry
+    rw [← List.toFinset_eq w₁_nodup]
+    apply Finset.eq_of_veq
+    exact hs₁₂
   have s₂_eq_w₂_toFinset : s₂ = w₂.toFinset := by
-    sorry
+    rw [← List.toFinset_eq w₂_nodup]
+    apply Finset.eq_of_veq
+    exact hs₂₂
   have ⟨x, hx₁, hx₂⟩ := S.exchangeAxiom hs₁₁ hs₂₁ (by
     simp only [s₁_eq_w₁_toFinset, s₂_eq_w₂_toFinset, w₁_nodup, w₂_nodup,
       List.toFinset_card_of_nodup, hw])
   exists x
-  have x_notin_w₂ : x ∉ w₂ := by
-    rw [s₁_eq_w₁_toFinset, s₂_eq_w₂_toFinset] at hx₁
-    simp_all
-  constructor <;> try apply And.intro <;> try apply And.intro
-  . rw [s₁_eq_w₁_toFinset, s₂_eq_w₂_toFinset] at hx₁
-    simp_all
+  rw [s₁_eq_w₁_toFinset, s₂_eq_w₂_toFinset] at hx₁
+  have x_notin_w₂ : x ∉ w₂ := by simp_all
+  apply And.intro (by simp_all) (And.intro _ (And.intro _ (fun _ h => hw₂ _ h)))
   . exists w₂.toFinset ∪ {x}
-    constructor
-    . exact s₂_eq_w₂_toFinset ▸ hx₂
-    . rw [Finset.union_comm, ← Finset.insert_eq]
-      simp [x_notin_w₂, w₂_nodup, List.Nodup.dedup]
+    apply And.intro (s₂_eq_w₂_toFinset ▸ hx₂)
+    rw [Finset.union_comm, ← Finset.insert_eq]
+    simp [x_notin_w₂, w₂_nodup, List.Nodup.dedup]
   . rw [Finset.union_comm, ← Finset.insert_eq, s₂_eq_w₂_toFinset] at hx₂
     exact hx₂
-  . intro w' hw'
-    sorry
 
 theorem fromSystemToLanguage'_eq {α : Type _} [Fintype α] [DecidableEq α]
   {S₁ S₂ : GreedoidSystem α} (hS : S₁.fromSystemToLanguage' = S₂.fromSystemToLanguage') :
