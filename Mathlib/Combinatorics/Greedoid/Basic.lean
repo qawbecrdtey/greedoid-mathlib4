@@ -799,8 +799,6 @@ theorem greedoidLanguageAxiom_fromSystemToLanguage' {α : Type _} [Fintype α] [
 theorem fromSystemToLanguage'_eq {α : Type _} [Fintype α] [DecidableEq α]
   {S₁ S₂ : GreedoidSystem α} (hS : S₁.fromSystemToLanguage' = S₂.fromSystemToLanguage') :
     S₁ = S₂ := by
-  -- let ⟨Sys₁, hSys₁₁, hSys₁₂, hSys₁₃⟩ := S₁
-  -- let ⟨Sys₂, hSys₂₁, hSys₂₂, hSys₂₃⟩ := S₂
   simp_all [GreedoidSystem.fromSystemToLanguage']
   apply GreedoidSystem.eq_of_veq
   ext s; constructor <;> intro hs₁ <;> by_cases hs₂ : s = ∅ <;>
@@ -836,11 +834,52 @@ theorem fromSystemToLanguage_eq {α : Type _} [Fintype α] [DecidableEq α]
 
 @[simp]
 theorem fromSystemToLanguage_fromLanguageToSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
-    {S : GreedoidSystem α} : S.fromSystemToLanguage.fromLanguageToSystem = S := sorry
+    {S : GreedoidSystem α} : S.fromSystemToLanguage.fromLanguageToSystem = S := by
+  simp [GreedoidLanguage.fromLanguageToSystem, GreedoidSystem.fromSystemToLanguage,
+    GreedoidLanguage.fromLanguageToSystem', GreedoidSystem.fromSystemToLanguage',
+    Language.toAssociatedSetSystem, SetSystem.toHereditaryLanguage]
+  apply GreedoidSystem.eq_of_veq
+  simp; ext x; constructor <;> intro h
+  . simp at h
+    have ⟨a, ⟨_, ha₂⟩, ha₃⟩ := h
+    exact ha₃ ▸ ha₂ _ List.suffix_rfl
+  . apply SetSystem.induction_on_accessible x h (by simp [S.contains_empty])
+    simp
+    intro a s₁ hs₁₁ hs₁₂ hs₁₃ w s₂ hs₂₁ hs₂₂ hw₁ hw₂
+    exists a :: w
+    simp_all [Finset.insert_eq, Finset.union_comm]
+    have w_nodup : w.Nodup := Multiset.coe_nodup.mp (hs₂₂ ▸ s₂.nodup)
+    have a_notin_w : a ∉ w := fun h' => hs₁₁ (by rw [← hw₂]; simp only [List.mem_toFinset, h'])
+    constructor
+    . exists s₁ ∪ {a}
+      simp only [true_and, hs₁₃]
+      rw [Finset.union_comm, ← Finset.insert_eq, ← hw₂]
+      have w_nodup : w.Nodup := Multiset.coe_nodup.mp (hs₂₂ ▸ s₂.nodup)
+      have a_notin_w : a ∉ w := fun h' => hs₁₁ (by rw [← hw₂]; simp only [List.mem_toFinset, h'])
+      simp [Multiset.coe_nodup, w_nodup, a_notin_w, List.Nodup.dedup]
+    . intro w' hw'
+      rw [List.suffix_cons_iff] at hw'
+      apply hw'.elim <;> intro hw'
+      . rw [hw']
+        simp [Finset.union_comm, ← Finset.insert_eq, Multiset.coe_nodup,
+          w_nodup, a_notin_w, List.Nodup.dedup, hw₂]
+        rw [Finset.insert_eq, Finset.union_comm]
+        exact hs₁₃
+      . exact hw₁ _ hw'
 
 @[simp]
 theorem fromLanguageToSystem_fromSystemToLanguage_eq {α : Type _} [Fintype α] [DecidableEq α]
-    {L : GreedoidLanguage α} : (L.fromLanguageToSystem).fromSystemToLanguage = L := sorry
+    {L : GreedoidLanguage α} : (L.fromLanguageToSystem).fromSystemToLanguage = L := by
+  simp [GreedoidLanguage.fromLanguageToSystem, GreedoidSystem.fromSystemToLanguage,
+    GreedoidLanguage.fromLanguageToSystem', GreedoidSystem.fromSystemToLanguage']
+  apply GreedoidLanguage.eq_of_veq
+  simp only; symm
+  rw [hereditary_language_lemma]
+  intro w₁ hw₁ w₂ hw₂ x hx hw
+  have x_notin_w₂ : x ∉ w₂ := by simp at hx ; simp only [hx]
+  have ⟨x', hx'₁, hx'₂⟩ := L.exchangeAxiom hw₁ hw₂ sorry
+  have : x' = x := sorry
+  exact this ▸ hx'₂
 
 /-- `relatedLanguageSystem` checks if a given language and system are related to each other.
     That is, given that the language is hereditary,
@@ -948,18 +987,10 @@ theorem finsetMem_mem_iff {s : Finset α} :
     s ∈ G ↔ s ∈ₛ G := by rfl
 
 theorem word_mem_language_toFinset_mem {w : List α} (hw : w ∈ₗ G) :
-    w.toFinset ∈ₛ G := by
-  have := G.related.1
-  simp [Greedoid.finsetMem, this, GreedoidLanguage.fromLanguageToSystem',
-    GreedoidLanguage.fromLanguageToSystem]
-  exists w
+    w.toFinset ∈ₛ G := sorry
 
 theorem finset_feasible_exists_word {s : Finset α} (hs : s ∈ₛ G) :
-    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := by
-  simp [Greedoid.finsetMem, G.related.1, GreedoidLanguage.fromLanguageToSystem',
-    GreedoidLanguage.fromLanguageToSystem] at hs
-  let ⟨a, ha₁, ha₂⟩ := hs
-  exists a; exact And.intro ha₁ ha₂.symm
+    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := sorry
 
 theorem finset_feasible_exists_feasible_ssubset {s : Finset α}
   (hs₁ : s ∈ₛ G) (hs₂ : s ≠ ∅) :
@@ -995,7 +1026,7 @@ theorem finset_feasible_exists_feasible_ssubset {s : Finset α}
 
 end Membership
 
-instance : Accessible G.system.feasible_set where
+instance : SetSystem.Accessible G.system.feasible_set where
   contains_empty := G.system.contains_empty
   accessible := by
     intro s hs₁ hs₂
