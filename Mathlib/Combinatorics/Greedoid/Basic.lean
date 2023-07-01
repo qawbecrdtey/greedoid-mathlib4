@@ -170,20 +170,34 @@ theorem accessible_system_smaller_set {α : Type _} [DecidableEq α] {Sys : Fins
   simp_arith at hs'₃
   exact hs'₃
 
-protected theorem induction_on_accessible {α : Type _} {p : Finset α → Prop} [DecidableEq α]
+protected theorem induction_on_accessible {α : Type _} [Fintype α] [DecidableEq α]
+  {p : Finset α → Prop}
   {Sys : Finset (Finset α)} [Accessible Sys]
   (s : Finset α) (hs : s ∈ Sys)
-  (empty : p ∅) (insert : ∀ ⦃a : α⦄ {s : Finset α}, s ∈ Sys → s ∪ {a} ∈ Sys → p (s ∪ {a})) :
+  (empty : p ∅) (insert : ∀ ⦃a : α⦄ {s : Finset α}, s ∈ Sys → s ∪ {a} ∈ Sys → p s → p (s ∪ {a})) :
     p s := by
-  by_cases s = ∅ <;> simp_all only [empty]
-  let ⟨x, hx₁, hx₂⟩ := ‹Accessible Sys›.accessible _ hs h
-  have := @insert x (s \ {x}) hx₂ (by
-    rw [Finset.sdiff_union_self_eq_union, Finset.union_comm,
-      ← Finset.insert_eq, Finset.insert_eq_of_mem hx₁]
-    exact hs)
+  by_cases s = ∅ <;> simp only [h, empty]
+  have ⟨x, hx₁, hx₂⟩ := ‹Accessible Sys›.accessible _ hs h
+  have := SetSystem.induction_on_accessible _ hx₂ empty insert
+  have := insert hx₂ (by
+    simp only [hx₁, Finset.sdiff_union_self_eq_union]
+    rw [Finset.union_comm, ← Finset.insert_eq]
+    simp only [hx₁, Finset.insert_eq_of_mem, hs] : s \ {x} ∪ {x} ∈ Sys) this
   rw [Finset.sdiff_union_self_eq_union, Finset.union_comm, ← Finset.insert_eq,
     Finset.insert_eq_of_mem hx₁] at this
   exact this
+termination_by induction_on_accessible => s.card
+decreasing_by
+  simp_wf
+  rw [Finset.card_sdiff (fun x' hx' => (Finset.eq_of_mem_singleton hx') ▸ hx₁)]
+  exact Nat.sub_lt (Nat.zero_lt_of_ne_zero (Finset.card_ne_zero_of_mem hx₁))
+    (by simp only [Finset.card_singleton])
+
+theorem mem_toHereditaryLanguage {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
+  [Accessible Sys] {s : Finset α} (hs : s ∈ Sys) :
+    ∃ w ∈ toHereditaryLanguage Sys, w.toFinset = s := by
+
+  sorry
 
 end SetSystem
 
@@ -737,7 +751,7 @@ theorem greedoidLanguageAxiom_fromSystemToLanguage' {α : Type _} [Fintype α] [
   simp only [greedoidLanguageAxiom, this.contains_empty, gt_iff_lt, true_and]
   apply And.intro this.simple (And.intro (fun _ _ h => this.contains_prefix _ _ h) _)
   simp [GreedoidSystem.fromSystemToLanguage', SetSystem.toHereditaryLanguage]
-  intro w₁ s₁ hs₁₁ hs₁₂ hw₁ w₂ s₂ hs₂₁ hs₂₂ hw₂ hw
+  intro w₁ s₁ hs₁₁ hs₁₂ _ w₂ s₂ hs₂₁ hs₂₂ hw₂ hw
   have w₁_nodup : w₁.Nodup := Multiset.coe_nodup.mp (hs₁₂ ▸ s₁.nodup)
   have w₂_nodup : w₂.Nodup := Multiset.coe_nodup.mp (hs₂₂ ▸ s₂.nodup)
   have s₁_eq_w₁_toFinset : s₁ = w₁.toFinset := by
@@ -765,13 +779,19 @@ theorem greedoidLanguageAxiom_fromSystemToLanguage' {α : Type _} [Fintype α] [
 theorem fromSystemToLanguage'_eq {α : Type _} [Fintype α] [DecidableEq α]
   {S₁ S₂ : GreedoidSystem α} (hS : S₁.fromSystemToLanguage' = S₂.fromSystemToLanguage') :
     S₁ = S₂ := by
-  let ⟨Sys₁, hSys₁₁, hSys₁₂, hSys₁₃⟩ := S₁
-  let ⟨Sys₂, hSys₂₁, hSys₂₂, hSys₂₃⟩ := S₂
+  -- let ⟨Sys₁, hSys₁₁, hSys₁₂, hSys₁₃⟩ := S₁
+  -- let ⟨Sys₂, hSys₂₁, hSys₂₂, hSys₂₃⟩ := S₂
   simp_all [GreedoidSystem.fromSystemToLanguage']
-  ext s; constructor <;> intro h
-  . -- exact @SetSystem.induction_on_accessible _ (fun x => x ∈ S₂.1) _ S₁.1 _ s _ S₂.2 sorry
+  apply GreedoidSystem.eq_of_veq
+  ext s; constructor <;> intro hs₁ <;> by_cases hs₂ : s = ∅ <;>
+    simp only [hs₂, S₂.contains_empty, S₁.contains_empty]
+  . apply SetSystem.induction_on_accessible s hs₁ S₂.contains_empty
+    intro a s hs₁ hs₂
+    -- SetSystem.mem_toHereditaryLanguage
     sorry
-  . sorry
+  . apply SetSystem.induction_on_accessible _ hs₁ S₁.contains_empty
+    intro a s hs₁ hs₂
+    sorry
 
 /-- Converts system to language. -/
 protected def GreedoidSystem.fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
@@ -792,7 +812,6 @@ theorem fromSystemToLanguage_eq {α : Type _} [Fintype α] [DecidableEq α]
 @[simp]
 theorem fromSystemToLanguage_fromLanguageToSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
     {S : GreedoidSystem α} : S.fromSystemToLanguage.fromLanguageToSystem = S := sorry
-  sorry
 
 @[simp]
 theorem fromLanguageToSystem_fromSystemToLanguage_eq {α : Type _} [Fintype α] [DecidableEq α]
