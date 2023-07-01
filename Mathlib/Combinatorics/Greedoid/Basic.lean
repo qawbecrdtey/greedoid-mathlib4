@@ -12,6 +12,37 @@ import Mathlib.LinearAlgebra.LinearIndependent
 import Mathlib.Tactic.TFAE
 import Mathlib.Tactic.WLOG
 
+protected theorem List.exists_maximal_suffix {α : Type _} {l : List α} {p : List α → Prop}
+  (hp_empty : p []) (hp_suffix : ∀ l, p l → (∀ l', l' <:+ l → p l')) :
+    ∃ l', l' <:+ l ∧ p l' ∧ (∀ l'', l'' <:+ l → p l'' → l''.length ≤ l'.length) := by
+  induction' l with h l ih <;> simp [hp_empty]
+  have ⟨l', hl'₁, hl'₂, hl'₃⟩ := ih
+  by_cases h₁ : l' = l
+  . by_cases h₂ : p (h :: l)
+    . exists h :: l
+      simp only [List.suffix_rfl, h₂, true_and]
+      exact fun _ h _ => List.isSuffix.length_le h
+    . exists l
+      rw [h₁] at hl'₂
+      simp only [suffix_cons, hl'₂, true_and]
+      intro _ h₃ h₄
+      rw [List.suffix_cons_iff] at h₃
+      apply h₃.elim <;> intro h₃
+      . rw [h₃] at h₄
+        contradiction
+      . exact List.isSuffix.length_le h₃
+  . exists l'
+    simp only [hl'₂, true_and]
+    constructor
+    . rw [List.suffix_cons_iff]; exact Or.inr hl'₁
+    . intro _ h₂ h₃
+      rw [List.suffix_cons_iff] at h₂
+      apply h₂.elim <;> intro h₂
+      . exfalso
+        exact h₁ (List.isSuffix.eq_of_length hl'₁ (Nat.le_antisymm (List.isSuffix.length_le hl'₁)
+          (hl'₃ _ List.suffix_rfl (hp_suffix _ (h₂ ▸ h₃) _ (List.suffix_cons _ _)))))
+      . exact hl'₃ _ h₂ h₃
+
 /-  Note: We distinguish `w` as a `Word` from `l` as a `List`, but use the same type
     as there are so many functionalities given with `List`. -/
 
@@ -303,10 +334,12 @@ theorem hereditary_language_lemma {α : Type _} [DecidableEq α] {Lang : Finset 
       simp [w₁_nodup, List.Nodup.dedup] at hw₁₂
       have w_nodup := (List.Perm.nodup_iff hw₁₂).mpr w₁_nodup
       have ⟨w₀, hw₀⟩ : ∃ w₀ ∈ Lang, w₀ <:+ w ∧ (∀ w' ∈ Lang, w' <:+ w → w'.length ≤ w₀.length) := by
-        sorry
-      have w₀_nodup : w₀.Nodup :=
-        have ⟨w', hw'⟩ := hw₀.2.1
-        (List.nodup_append.mp (hw' ▸ w_nodup : (w' ++ w₀).Nodup)).2.1
+        have ⟨w₀, hw₀⟩ := @List.exists_maximal_suffix _ w (fun w' => w' ∈ Lang)
+            ‹Language.Hereditary Lang›.contains_empty (by
+              simp only
+              rintro l₁ hl₁ l₂ ⟨l₃, hl₂⟩
+              exact ‹Language.Hereditary Lang›.contains_prefix l₂ l₃ (hl₂ ▸ hl₁))
+        exists w₀; tauto
       by_cases h₂ : w₀ = w
       . exact h₂ ▸ hw₀.1
       . have w₀_length := lt_iff_le_and_ne.mpr
@@ -877,8 +910,18 @@ theorem fromLanguageToSystem_fromSystemToLanguage_eq {α : Type _} [Fintype α] 
   rw [hereditary_language_lemma]
   intro w₁ hw₁ w₂ hw₂ x hx hw
   have x_notin_w₂ : x ∉ w₂ := by simp at hx ; simp only [hx]
-  have ⟨x', hx'₁, hx'₂⟩ := L.exchangeAxiom hw₁ hw₂ sorry
-  have : x' = x := sorry
+  have ⟨x', hx'₁, hx'₂⟩ := L.exchangeAxiom hw₁ hw₂ (by
+    rw [← List.toFinset_card_of_nodup (L.simple _ hw₁),
+      ← List.toFinset_card_of_nodup (L.simple _ hw₂), hw]
+    simp_arith [x_notin_w₂])
+  have : x' = x := by
+    simp at hx
+    rw [Finset.union_comm, ← Finset.insert_eq, Finset.ext_iff] at hw
+    simp only [List.mem_toFinset, Finset.mem_insert] at hw
+    apply ((hw x').mp hx'₁).elim <;> intro h <;> try trivial
+    have := L.simple _ hx'₂
+    rw [List.nodup_cons] at this
+    tauto
   exact this ▸ hx'₂
 
 /-- `relatedLanguageSystem` checks if a given language and system are related to each other.
@@ -894,6 +937,19 @@ protected def Greedoid.relatedLanguageSystem {α : Type _} [Fintype α] [Decidab
   (L : GreedoidLanguage α) (S : GreedoidSystem α) : Prop :=
   S = L.fromLanguageToSystem ∧ L = S.fromSystemToLanguage
 
+@[simp]
+theorem relatedLanguageSystem'_iff_relatedLanguageSystem {α : Type _} [Fintype α] [DecidableEq α]
+  {L : GreedoidLanguage α} {S : GreedoidSystem α} :
+    Greedoid.relatedLanguageSystem' L S ↔ Greedoid.relatedLanguageSystem L S := by
+  simp [Greedoid.relatedLanguageSystem', Greedoid.relatedLanguageSystem]
+  constructor <;> rintro ⟨h₁, h₂⟩ <;>
+  simp [GreedoidLanguage.fromLanguageToSystem, GreedoidSystem.fromSystemToLanguage] at * <;>
+  constructor
+  . apply GreedoidSystem.eq_of_veq; exact h₁
+  . apply GreedoidLanguage.eq_of_veq; exact h₂
+  . simp only [h₁]
+  . simp only [h₂]
+
 theorem relatedLanguageSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
   {L₁ L₂ : GreedoidLanguage α} {S₁ S₂ : GreedoidSystem α}
   (h₁ : Greedoid.relatedLanguageSystem L₁ S₁)
@@ -901,6 +957,22 @@ theorem relatedLanguageSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
     L₁ = L₂ ↔ S₁ = S₂ :=
   ⟨fun h => fromSystemToLanguage_eq ((h ▸ h₁.2) ▸ h₂.2),
    fun h => fromLanguageToSystem_eq ((h ▸ h₁.1) ▸ h₂.1)⟩
+
+theorem toFinset_mem_greedoidSystem_of_mem_greedoidLanguage {α : Type _} [Fintype α]
+  [DecidableEq α] {L : GreedoidLanguage α} {S : GreedoidSystem α}
+  (hrelated : Greedoid.relatedLanguageSystem L S) {w : List α} (hw : w ∈ L.language) :
+    w.toFinset ∈ S.feasible_set := by
+  simp only [(relatedLanguageSystem'_iff_relatedLanguageSystem.mpr hrelated).1,
+    GreedoidLanguage.fromLanguageToSystem', Language.toAssociatedSetSystem, Finset.mem_image]
+  exists w
+
+theorem exists_word_mem_greedoidLanguage_of_mem_greedoidSystem {α : Type _} [Fintype α]
+  [DecidableEq α] {L : GreedoidLanguage α} {S : GreedoidSystem α}
+  (hrelated : Greedoid.relatedLanguageSystem L S) {s : Finset α} (hs : s ∈ S.feasible_set) :
+    ∃ w ∈ L.language, w.toFinset = s := by
+  simp only [(relatedLanguageSystem'_iff_relatedLanguageSystem.mpr hrelated).1,
+    GreedoidLanguage.fromLanguageToSystem', Language.toAssociatedSetSystem, Finset.mem_image] at hs
+  exact hs
 
 /-- Merging of language and system version of greedoid.
     This will (potentially) help `Greedoid` cover theorems written in
@@ -987,10 +1059,13 @@ theorem finsetMem_mem_iff {s : Finset α} :
     s ∈ G ↔ s ∈ₛ G := by rfl
 
 theorem word_mem_language_toFinset_mem {w : List α} (hw : w ∈ₗ G) :
-    w.toFinset ∈ₛ G := sorry
+    w.toFinset ∈ₛ G :=
+  toFinset_mem_greedoidSystem_of_mem_greedoidLanguage G.related hw
 
 theorem finset_feasible_exists_word {s : Finset α} (hs : s ∈ₛ G) :
-    ∃ w : List α, w ∈ₗ G ∧ s = w.toFinset := sorry
+    ∃ w : List α, w ∈ₗ G ∧ w.toFinset = s := by
+  have := exists_word_mem_greedoidLanguage_of_mem_greedoidSystem G.related hs
+  simp only [Greedoid.wordMem, this]
 
 theorem finset_feasible_exists_feasible_ssubset {s : Finset α}
   (hs₁ : s ∈ₛ G) (hs₂ : s ≠ ∅) :
