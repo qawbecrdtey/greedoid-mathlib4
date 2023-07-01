@@ -806,12 +806,17 @@ theorem fromSystemToLanguage'_eq {α : Type _} [Fintype α] [DecidableEq α]
   ext s; constructor <;> intro hs₁ <;> by_cases hs₂ : s = ∅ <;>
     simp only [hs₂, S₂.contains_empty, S₁.contains_empty]
   . apply SetSystem.induction_on_accessible s hs₁ S₂.contains_empty
-    intro a s ha hs₁ hs₂ hs₃
+    intro a s _ _ hs₂ _
     have ⟨w, hw₁, hw₂⟩ := SetSystem.mem_toHereditaryLanguage hs₂
-    sorry
+    rw [hS] at hw₁
+    simp [SetSystem.toHereditaryLanguage] at hw₁
+    exact hw₂ ▸ hw₁.2 w List.suffix_rfl
   . apply SetSystem.induction_on_accessible _ hs₁ S₁.contains_empty
-    intro a s hs₁ hs₂
-    sorry
+    intro a s _ _ hs₂ _
+    have ⟨w, hw₁, hw₂⟩ := SetSystem.mem_toHereditaryLanguage hs₂
+    rw [← hS] at hw₁
+    simp [SetSystem.toHereditaryLanguage] at hw₁
+    exact hw₂ ▸ hw₁.2 w List.suffix_rfl
 
 /-- Converts system to language. -/
 protected def GreedoidSystem.fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
