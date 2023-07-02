@@ -1035,6 +1035,14 @@ theorem relatedLanguageSystem_eq {α : Type _} [Fintype α] [DecidableEq α]
   ⟨fun h => fromSystemToLanguage_eq ((h ▸ h₁.2) ▸ h₂.2),
    fun h => fromLanguageToSystem_eq ((h ▸ h₁.1) ▸ h₂.1)⟩
 
+theorem relatedLanguageSystem_of_fromLanguageToSystem {α : Type _} [Fintype α] [DecidableEq α]
+  {L : GreedoidLanguage α} : Greedoid.relatedLanguageSystem L L.fromLanguageToSystem := by
+  simp [Greedoid.relatedLanguageSystem]
+
+theorem relatedLanguageSystem_of_fromSystemToLanguage {α : Type _} [Fintype α] [DecidableEq α]
+  {S : GreedoidSystem α} : Greedoid.relatedLanguageSystem S.fromSystemToLanguage S := by
+  simp [Greedoid.relatedLanguageSystem]
+
 theorem toFinset_mem_greedoidSystem_of_mem_greedoidLanguage {α : Type _} [Fintype α]
   [DecidableEq α] {L : GreedoidLanguage α} {S : GreedoidSystem α}
   (hrelated : Greedoid.relatedLanguageSystem L S) {w : List α} (hw : w ∈ L.language) :
@@ -1102,6 +1110,34 @@ theorem eq_of_seq : ∀ {G₁ G₂ : Greedoid α}, G₁.system = G₂.system →
   rw [relatedLanguageSystem_eq G₁.related G₂.related]
   exact hs
 
+theorem language_injective : Function.Injective (language : Greedoid α → GreedoidLanguage α) :=
+  fun _ _ => eq_of_leq
+
+theorem system_injective : Function.Injective (system : Greedoid α → GreedoidSystem α) :=
+  fun _ _ => eq_of_seq
+
+@[simp]
+theorem language_inj {G₁ G₂ : Greedoid α} : G₁.language = G₂.language ↔ G₁ = G₂ :=
+  language_injective.eq_iff
+
+@[simp]
+theorem system_inj {G₁ G₂ : Greedoid α} : G₁.system = G₂.system ↔ G₁ = G₂ :=
+  system_injective.eq_iff
+
+@[coe]
+def ofGreedoidLanguage : GreedoidLanguage α → Greedoid α :=
+  fun L => ⟨L, L.fromLanguageToSystem, relatedLanguageSystem_of_fromLanguageToSystem⟩
+
+@[coe]
+def ofGreedoidSystem : GreedoidSystem α → Greedoid α :=
+  fun S => ⟨S.fromSystemToLanguage, S, relatedLanguageSystem_of_fromSystemToLanguage⟩
+
+@[simp]
+theorem ofGreedoidLanguage_eq : ofGreedoidLanguage G.language = G := by rw [← language_inj]; rfl
+
+@[simp]
+theorem ofGreedoidSystem_eq : ofGreedoidSystem G.system = G := by rw [← system_inj]; rfl
+
 instance : DecidableEq (Greedoid α) := fun G₁ G₂ =>
   if h : G₁.language = G₂.language ∨ G₁.system = G₂.system
   then isTrue (h.elim
@@ -1110,8 +1146,11 @@ instance : DecidableEq (Greedoid α) := fun G₁ G₂ =>
   else isFalse (fun h' => h (Or.inl (h' ▸ rfl)))
 
 instance : Fintype (Greedoid α) where
-  elems := sorry
-  complete := sorry
+  elems := (@Finset.univ (GreedoidLanguage α) _).map
+    ⟨fun L => ofGreedoidLanguage L, fun _ _ hL => language_inj.mpr hL⟩
+  complete G := by
+    simp only [Finset.mem_map, mem_univ, Function.Embedding.coeFn_mk]
+    exists G.language; simp only [ofGreedoidLanguage_eq]
 
 section Membership
 
