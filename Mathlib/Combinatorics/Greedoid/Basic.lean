@@ -170,8 +170,9 @@ instance toHereditaryLanguage_Hereditary {α : Type _} [DecidableEq α] (Sys : F
         . rw [List.suffix_cons_iff] at hw
           simp; apply hw.elim <;> tauto
 
-theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
-  [Accessible Sys] {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
+theorem accessible_system_smaller_feasible_set_helper {α : Type _} [DecidableEq α]
+  {Sys : Finset (Finset α)} [Accessible Sys]
+  {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
     ∃ s' ∈ Sys, s' ⊆ s ∧ s'.card + n = s.card := by
   induction' n with n ih generalizing s
   . exists s
@@ -189,10 +190,11 @@ theorem accessible_system_smaller_set_helper {α : Type _} [DecidableEq α] {Sys
     have h₂ : 1 ≤ s.card - n := Nat.le_sub_of_add_le (Nat.succ_eq_one_add n ▸ hn)
     simp only [h₁, h₂]
 
-theorem accessible_system_smaller_set {α : Type _} [DecidableEq α] {Sys : Finset (Finset α)}
-  [Accessible Sys] {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
+theorem accessible_system_smaller_feasible_set {α : Type _} [DecidableEq α]
+  {Sys : Finset (Finset α)} [Accessible Sys]
+  {s : Finset α} (hs₁ : s ≠ ∅) (hs₂ : s ∈ Sys) {n : ℕ} (hn : n ≤ s.card) :
     ∃ s' ∈ Sys, s' ⊆ s ∧ s'.card = n := by
-  have ⟨s', hs'₁, hs'₂, hs'₃⟩ := accessible_system_smaller_set_helper hs₁ hs₂
+  have ⟨s', hs'₁, hs'₂, hs'₃⟩ := accessible_system_smaller_feasible_set_helper hs₁ hs₂
     (Nat.sub_le _ _ : s.card - n ≤ s.card)
   exists s'
   simp_arith [hs'₁, hs'₂]
@@ -205,7 +207,8 @@ protected theorem induction_on_accessible {α : Type _} [Fintype α] [DecidableE
   {p : Finset α → Prop}
   {Sys : Finset (Finset α)} [Accessible Sys]
   (s : Finset α) (hs : s ∈ Sys)
-  (empty : p ∅) (insert : ∀ ⦃a : α⦄ {s : Finset α}, a ∉ s → s ∈ Sys → s ∪ {a} ∈ Sys → p s → p (s ∪ {a})) :
+  (empty : p ∅)
+  (insert : ∀ ⦃a : α⦄ {s : Finset α}, a ∉ s → s ∈ Sys → s ∪ {a} ∈ Sys → p s → p (s ∪ {a})) :
     p s := by
   by_cases s = ∅ <;> simp only [h, empty]
   have ⟨x, hx₁, hx₂⟩ := ‹Accessible Sys›.accessible _ hs h
@@ -385,11 +388,18 @@ theorem base_bases_eq {Sys : Finset (Finset α)} :
 theorem basis_mem_feasible_set {Sys : Finset (Finset α)} {s b : Finset α} (hb : b ∈ bases Sys s) :
     b ∈ Sys := by
   simp only [bases, Finset.mem_filter] at hb
-  simp [hb]
+  exact hb.1
 
 theorem basis_subseteq {Sys : Finset (Finset α)} {s b : Finset α} (hb : b ∈ bases Sys s) :
     b ⊆ s := by
-  sorry
+  simp only [bases, Finset.mem_filter] at hb
+  exact hb.2.1
+
+theorem basis_maximal {Sys : Finset (Finset α)} {s b : Finset α} (hb : b ∈ bases Sys s)
+  {a : α} (ha : a ∉ b) :
+    a ∉ s ∨ b ∪ {a} ∉ Sys := by
+  simp only [bases, Finset.mem_filter] at hb
+  exact hb.2.2 a ha
 
 theorem exists_bases_containing_feasible_set {Sys : Finset (Finset α)} {s a : Finset α}
   (hs₁ : s ∈ Sys) (hs₂ : s ⊆ a) :
@@ -411,7 +421,7 @@ theorem exists_bases_containing_feasible_set {Sys : Finset (Finset α)} {s a : F
 termination_by exists_bases_containing_feasible_set Sys s a _ _ => a.card - s.card
 decreasing_by
   simp_wf
-  have hx₁ := ‹¬ x ∈ s›
+  have hx₁ := ‹x ∉ s›
   simp [hx₁]
   exact Nat.sub_lt_sub_left
     (Finset.card_lt_card ((Finset.ssubset_iff_of_subset hs₂).mpr ⟨x, hx₂, hx₁⟩))
@@ -477,6 +487,27 @@ def weakerExchangeAxiom (Sys : Finset (Finset α)) :=
   (hxz₂ : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
     s ∪ {y, z} ∈ Sys
 
+theorem accessible_system_weakerExchangeAxiom_between_feasible_sets {α : Type _} [DecidableEq α]
+  {Sys : Finset (Finset α)} [Accessible Sys] (hSys : weakerExchangeAxiom Sys)
+  {s₁ : Finset α} (hs₁ : s₁ ∈ Sys) {s₂ : Finset α} (hs₂ : s₂ ∈ Sys) (hs : s₂ ⊆ s₁)
+  {n : ℕ} (hn₁ : n ≤ s₁.card) (hn₂ : s₂.card ≤ n) :
+    ∃ s ∈ Sys, s₂ ⊆ s ∧ s ⊆ s₁ ∧ s.card = n := by
+  apply (Nat.le_iff_lt_or_eq.mp hn₂).elim <;> intro hn₂
+  . apply (Nat.le_iff_lt_or_eq.mp (Nat.succ_le.mpr hn₂)).elim <;> intro hn₂
+    . have ⟨s', hs'⟩ := accessible_system_weakerExchangeAxiom_between_feasible_sets hSys hs₁ hs₂ hs
+        (Nat.succ_le.mp (Nat.le_trans (Nat.succ_le.mpr hn₂) hn₁))
+        (Nat.le_trans (Nat.le_succ s₂.card) (Nat.le_succ _))
+      have ⟨s, hs⟩ := accessible_system_weakerExchangeAxiom_between_feasible_sets hSys hs₁ hs'.1
+        hs'.2.2.1 hn₁ (hs'.2.2.2 ▸ (Nat.succ_le.mpr hn₂))
+      exists s; tauto
+    . sorry
+  . exists s₂
+termination_by accessible_system_weakerExchangeAxiom_between_feasible_sets =>
+  (s₁.card - n) + (s₁.card - s₂.card)
+decreasing_by
+  simp_wf
+  sorry
+
 theorem exchangeAxiom_weakExchangeAxiom_iff {Sys : Finset (Finset α)} [Accessible Sys] :
     exchangeAxiom Sys ↔ weakExchangeAxiom Sys := by
   constructor <;> intro h
@@ -484,11 +515,12 @@ theorem exchangeAxiom_weakExchangeAxiom_iff {Sys : Finset (Finset α)} [Accessib
     let ⟨x, hx⟩ := h hs₁ hs₂ (by simp [hs])
     exact ⟨x, hx⟩
   . intro s₁ hs₁ s₂ hs₂ hs
-    have ⟨a, ha₁, ha₂, ha₃⟩ := accessible_system_smaller_set
+    have ⟨a, ha₁, ha₂, ha₃⟩ := accessible_system_smaller_feasible_set
       (fun h' => (Nat.not_eq_zero_of_lt hs) (card_eq_zero.mpr h')) hs₁
       (by simp_arith at hs; exact hs : s₂.card < s₁.card)
     have ⟨x, hx₁, hx₂⟩ := h ha₁ hs₂ ha₃
     exists x; simp_all; exact ha₂ hx₁.1
+
 mutual
   theorem weakerExchangeAxiom_exchangeAxiom_helper {Sys : Finset (Finset α)} [Accessible Sys]
     (hSys : weakerExchangeAxiom Sys)
@@ -496,16 +528,16 @@ mutual
     {s₂ : Finset α} (hs₂ : s₂ ∈ Sys)
     (hs : s₁.card = s₂.card + 1) :
       ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ Sys := by
-    have ⟨c, hc⟩ := @accessible_bases_nonempty _ _ _ Sys _ (s₁ ∩ s₂)
-    by_cases h : c = s₂
+    have ⟨c, hc₁⟩ := @accessible_bases_nonempty _ _ _ Sys _ (s₁ ∩ s₂)
+    by_cases h₀ : c = s₂
     . have ⟨x, hx⟩ := card_lt_mem_sdiff (hs ▸ (Nat.lt_succ_self s₂.card) : s₂.card < s₁.card)
       exists x
       rw [mem_sdiff] at *
       simp only [hx, hx.1, true_and]
-      rw [h, Finset.inter_comm] at hc
-      have := accessible_self_mem_bases_of_inter hc
+      rw [h₀, Finset.inter_comm] at hc₁
       have : (s₁ \ s₂).card = 1 := by
-        rw [Finset.card_sdiff this, hs, Nat.succ_sub (Nat.le.refl), Nat.sub_self]
+        rw [Finset.card_sdiff (accessible_self_mem_bases_of_inter hc₁), hs,
+          Nat.succ_sub (Nat.le.refl), Nat.sub_self]
       have ⟨y, hy⟩ := Finset.card_eq_one.mp this
       have : x = y := by
         have ⟨z, _, hz⟩ := (Finset.singleton_iff_unique_mem _).mp ⟨y, hy⟩
@@ -517,20 +549,29 @@ mutual
       rw [this]
       have : s₁ = s₂ ∪ {y} := by
         rw [← hy]
-        simp only [union_sdiff_self_eq_union, right_eq_union_iff_subset, ‹s₂ ⊆ s₁›]
+        simp only [union_sdiff_self_eq_union, right_eq_union_iff_subset,
+          accessible_self_mem_bases_of_inter hc₁]
       exact this ▸ hs₁
-    . have : s₂.card > c.card := by
-        have := (Finset.subset_inter_iff.mp (basis_subseteq hc)).2
-        apply Finset.card_lt_card
-        rw [ssubset_def]
-        exact ⟨this, fun h' => h (Finset.Subset.antisymm this h')⟩
-      sorry
+    . have : s₂.card > c.card :=
+        have := (Finset.subset_inter_iff.mp (basis_subseteq hc₁)).2
+        Finset.card_lt_card (ssubset_def.mpr ⟨this, fun h' => h₀ (Finset.Subset.antisymm this h')⟩)
+      have ⟨a, ha₁, ha₂⟩ :=
+        weakerExchangeAxiom_exchangeAxiom hSys hs₂ (basis_mem_feasible_set hc₁) this
+      have : s₁.card > (c ∪ {a}).card :=
+        hs ▸ Nat.lt_of_le_of_lt (Finset.card_union_le c {a}) (Nat.succ_lt_succ_iff.mpr this)
+      have ⟨s₂', hs₂'⟩ : ∃ s₂' ∈ Sys, c ∪ {a} ⊆ s₂' ∧ s₂' ⊆ s₁ ∪ {a} ∧ s₂.card = s₂'.card := by
+        sorry
+      by_cases h₁ : (s₁ ∪ s₂').card < (s₁ ∪ s₂).card
+      . sorry
+      . have h₁ : (s₁ ∪ s₂').card = (s₁ ∪ s₂).card := by
+          sorry
+        sorry
 
   theorem weakerExchangeAxiom_exchangeAxiom {Sys : Finset (Finset α)} [Accessible Sys]
     (hSys : weakerExchangeAxiom Sys) :
       exchangeAxiom Sys := by
     intro s₁' hs₁' s₂ hs₂ hs
-    have ⟨s₁, hs₁, hs₃, hs₄⟩ := accessible_system_smaller_set
+    have ⟨s₁, hs₁, hs₃, hs₄⟩ := accessible_system_smaller_feasible_set
       (fun h => (Nat.not_eq_zero_of_lt hs) (card_eq_zero.mpr h)) hs₁' hs
     have ⟨x, hx⟩ := weakerExchangeAxiom_exchangeAxiom_helper hSys hs₁ hs₂ hs₄
     exists x; simp_all; exact hs₃ hx.1.1
