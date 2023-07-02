@@ -487,27 +487,6 @@ def weakerExchangeAxiom (Sys : Finset (Finset α)) :=
   (hxz₂ : s ∪ {x, z} ∈ Sys) → (hxy : s ∪ {x, y} ∉ Sys) →
     s ∪ {y, z} ∈ Sys
 
-theorem accessible_system_weakerExchangeAxiom_between_feasible_sets {α : Type _} [DecidableEq α]
-  {Sys : Finset (Finset α)} [Accessible Sys] (hSys : weakerExchangeAxiom Sys)
-  {s₁ : Finset α} (hs₁ : s₁ ∈ Sys) {s₂ : Finset α} (hs₂ : s₂ ∈ Sys) (hs : s₂ ⊆ s₁)
-  {n : ℕ} (hn₁ : n ≤ s₁.card) (hn₂ : s₂.card ≤ n) :
-    ∃ s ∈ Sys, s₂ ⊆ s ∧ s ⊆ s₁ ∧ s.card = n := by
-  apply (Nat.le_iff_lt_or_eq.mp hn₂).elim <;> intro hn₂
-  . apply (Nat.le_iff_lt_or_eq.mp (Nat.succ_le.mpr hn₂)).elim <;> intro hn₂
-    . have ⟨s', hs'⟩ := accessible_system_weakerExchangeAxiom_between_feasible_sets hSys hs₁ hs₂ hs
-        (Nat.succ_le.mp (Nat.le_trans (Nat.succ_le.mpr hn₂) hn₁))
-        (Nat.le_trans (Nat.le_succ s₂.card) (Nat.le_succ _))
-      have ⟨s, hs⟩ := accessible_system_weakerExchangeAxiom_between_feasible_sets hSys hs₁ hs'.1
-        hs'.2.2.1 hn₁ (hs'.2.2.2 ▸ (Nat.succ_le.mpr hn₂))
-      exists s; tauto
-    . sorry
-  . exists s₂
-termination_by accessible_system_weakerExchangeAxiom_between_feasible_sets =>
-  (s₁.card - n) + (s₁.card - s₂.card)
-decreasing_by
-  simp_wf
-  sorry
-
 theorem exchangeAxiom_weakExchangeAxiom_iff {Sys : Finset (Finset α)} [Accessible Sys] :
     exchangeAxiom Sys ↔ weakExchangeAxiom Sys := by
   constructor <;> intro h
