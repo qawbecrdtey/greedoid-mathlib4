@@ -1267,7 +1267,9 @@ theorem basis_def {s b : Finset α} :
     apply And.intro h.1 (And.intro h.2.1 _)
     tauto
 
-theorem bases_nonempty {s : Finset α} : Nonempty (G.bases s) := sorry
+theorem bases_nonempty {s : Finset α} : Nonempty (G.bases s) := by
+  simp [Nonempty]
+  exact SetSystem.accessible_bases_nonempty
 
 theorem bases_card_eq {s : Finset α}
   {b₁ : Finset α} (hb₁ : b₁ ∈ G.bases s)
