@@ -1160,7 +1160,7 @@ theorem system_feasible_set_mem_memₛ {s : Finset α} : s ∈ G.system.feasible
 
 theorem language_language_mem_memₗ {w : List α} : w ∈ G.language.language ↔ w ∈ₗ G := by rfl
 
-theorem emptyset_finsetMem : (∅ : Finset α) ∈ₛ G := G.system.contains_empty
+theorem emptyset_finsetMem : ∅ ∈ₛ G := G.system.contains_empty
 
 theorem nil_wordMem : ([] : List α) ∈ₗ G := G.language.contains_empty
 
@@ -1180,64 +1180,22 @@ theorem word_mem_language_toFinset_mem {w : List α} (hw : w ∈ₗ G) :
 
 theorem finset_feasible_exists_word {s : Finset α} (hs : s ∈ₛ G) :
     ∃ w : List α, w ∈ₗ G ∧ w.toFinset = s := by
-  have := exists_word_mem_greedoidLanguage_of_mem_greedoidSystem G.related hs
-  simp only [Greedoid.wordMem, this]
+  simp only [Greedoid.wordMem, exists_word_mem_greedoidLanguage_of_mem_greedoidSystem G.related hs]
 
-theorem finset_feasible_exists_feasible_ssubset {s : Finset α}
-  (hs₁ : s ∈ₛ G) (hs₂ : s ≠ ∅) :
-    ∃ s', s' ⊂ s ∧ (s \ s').card = 1 ∧ s' ∈ₛ G := by
-  let ⟨w, hw₁, hw₂⟩ := finset_feasible_exists_word hs₁
-  cases w
-  case nil => simp_all
-  case cons h t =>
-    have : (h :: t).Nodup := wordMem_nodup hw₁
-    exists t.toFinset
-    simp at *
-    repeat apply And.intro
-    . rw [hw₂]; intro _ _; simp_all
-    . intro h'; rw [hw₂] at h'
-      have : (h :: t).Nodup := wordMem_nodup hw₁
-      simp at this
-      apply this.1
-      simp at h'
-      suffices h₁ : h ∈ t.toFinset by rw [← List.mem_toFinset]; exact h₁
-      apply h'
-      simp
-    . apply And.intro
-      . simp [hw₂]
-        rw [Finset.card_sdiff]
-        . simp_all
-        . intro _ _; simp_all
-      . have : t ∈ₗ G := G.language.contains_prefix t [h] (by
-          simp [Greedoid.wordMem] at hw₁; simp [hw₁])
-        simp [this, GreedoidLanguage.fromLanguageToSystem', Greedoid.finsetMem]
-        simp [G.related.1, GreedoidLanguage.fromLanguageToSystem',
-          GreedoidLanguage.fromLanguageToSystem]
-        exists t
+theorem finsetMem_exchangeAxiom
+  {s₁ : Finset α} (hs₁ : s₁ ∈ₛ G) {s₂ : Finset α} (hs₂ : s₂ ∈ₛ G) (hs : s₁.card > s₂.card) :
+    ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ₛ G := G.system.exchangeAxiom hs₁ hs₂ hs
+
+theorem finsetMem_weakExchangeAxiom
+  {s₁ : Finset α} (hs₁ : s₁ ∈ₛ G) {s₂ : Finset α} (hs₂ : s₂ ∈ₛ G) (hs : s₁.card = s₂.card + 1) :
+    ∃ x ∈ s₁ \ s₂, s₂ ∪ {x} ∈ₛ G :=
+  finsetMem_exchangeAxiom hs₁ hs₂ (by simp only [hs, lt_add_iff_pos_right])
 
 end Membership
 
 instance : SetSystem.Accessible G.system.feasible_set where
   contains_empty := G.system.contains_empty
-  accessible := by
-    intro s hs₁ hs₂
-    induction s using Finset.induction_on
-    . simp at hs₂
-    . clear hs₂
-      let ⟨w, hw₁, hw₂⟩ := finset_feasible_exists_word hs₁
-      cases w
-      case nil => simp_all
-      case cons h t =>
-        exists h
-        have := wordMem_nodup hw₁
-        simp at this
-        simp [hw₂, Finset.insert_sdiff_of_mem]
-        have ht := G.language.contains_prefix _ [h] hw₁
-        rw [Finset.sdiff_singleton_eq_self]
-        . rw [G.related.1]
-          simp [GreedoidLanguage.fromLanguageToSystem', GreedoidLanguage.fromLanguageToSystem]
-          exists t
-        . simp [this.1]
+  accessible _ h₁ h₂ := G.system.accessible _ h₁ h₂
 
 theorem weakExchangeAxiom : weakExchangeAxiom G.system.feasible_set := by
   apply (exchange_axioms_TFAE.out 0 1).mp
@@ -1247,8 +1205,12 @@ theorem weakerExchangeAxiom : weakerExchangeAxiom G.system.feasible_set := by
   apply (exchange_axioms_TFAE.out 0 2).mp
   exact G.system.exchangeAxiom
 
+instance : Language.Hereditary G.language.language where
+  contains_empty := G.language.contains_empty
+  contains_prefix := G.language.contains_prefix
+
 /-- Greedoid is full if the ground set is feasible. -/
-def full (G : Greedoid α) := (@Finset.univ α _) ∈ₛ G
+def full (G : Greedoid α) := Finset.univ ∈ₛ G
 
 /-- The interval prop is satisfied by matroids, antimatroids, and some greedoids. -/
 def interval_property (G : Greedoid α) :=
